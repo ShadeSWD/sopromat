@@ -7,7 +7,8 @@
   const nav = [
     { href: 'index', key: 'index', title: 'Обзор' },
     { href: 'theory', key: 'theory', title: 'Теория' },
-    { href: 'rgr1', key: 'rgr1', title: 'РГР 1: сечения' },
+    { href: 'rgr1', key: 'rgr1', title: 'Составные сечения' },
+    { href: 'frame', key: 'frame', title: 'Рама: метод сил' },
     { href: 'sources', key: 'sources', title: 'Источники' },
   ];
   const header = document.createElement('header');

@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>РГР 1. Составное сечение: центр тяжести и главные моменты</title>
-<meta name="description" content="Живой решатель РГР: составное сечение из листа, швеллера и уголка — статические моменты, центр тяжести, перенос осей по Штейнеру, главные оси и моменты, эллипс инерции; профили из сортаментов ГОСТ.">
+<title>Составное сечение: центр тяжести и главные моменты</title>
+<meta name="description" content="Живой расчёт: составное сечение из листа, швеллера и уголка — статические моменты, центр тяжести, перенос осей по Штейнеру, главные оси и моменты, эллипс инерции; профили из сортаментов ГОСТ.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔩</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <main class="wrap">
-  <h1>РГР 1. Составное сечение</h1>
+  <h1>Составное сечение: центр тяжести и главные моменты</h1>
   <p class="lead">Сечение собрано из трёх профилей: лист, швеллер и
   равнополочный уголок. Для каждого элемента заданы площадь F, координаты
   центра тяжести (X, Y) в начальной системе и собственные моменты инерции;
@@ -22,6 +23,7 @@
     <div class="controls" style="font-size:13.5px">
       <button id="btn-work" class="badge" style="cursor:pointer">данные работы (по умолчанию)</button>
       <button id="btn-gost" class="badge" style="cursor:pointer">подставить швеллер/уголок из ГОСТ</button>
+      <button id="btn-adj" class="badge" style="cursor:pointer">координаты, согласованные с плечами работы</button>
       <span class="small" id="gost-note"></span>
     </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font:13.5px system-ui">
@@ -51,6 +53,22 @@
       <table style="width:100%;border-collapse:collapse;font:14px system-ui"><tbody id="totals"></tbody></table>
     </div>
   </div>
+
+  <div class="note warn"><b>Примечание о первоисточнике.</b> В таблице исходной
+  работы плечи a<sub>i</sub> листа и уголка не согласуются с приведёнными там же
+  координатами Y<sub>i</sub>: для листа указано a = 1,296, хотя
+  11,1 − 9,905 = 1,195; для уголка a = −1,864, хотя 8,4 − 9,905 = −1,505.
+  Аналогично по X уголка: плечо b = −6,932 отвечает X = 8,04, а не 8,4 из
+  таблицы. При этом сам центр тяжести (14,972; 9,905) в записке посчитан от
+  табличных координат — то есть плечи и координаты записки взаимно
+  противоречивы, и воспроизвести все её итоги одновременно невозможно в
+  принципе. Наш расчёт ведётся строго от введённых координат и согласован
+  сам с собой (инвариант I<sub>xc</sub>+I<sub>yc</sub> = I<sub>u</sub>+I<sub>v</sub>
+  выполняется), поэтому итог отличается от записки (I<sub>xc</sub> 542,7
+  против 574,0; α −3,62° против −6,84°). Кнопка «координаты, согласованные
+  с плечами работы» подставляет Y листа = 11,201, X и Y уголка = 8,04 —
+  это приближает I<sub>xc</sub> к записке (574,1); оставшиеся расхождения —
+  следствие описанных противоречий первоисточника.</div>
 
   <h2>Решение по шагам (с подстановками)</h2>
   <div class="panel"><div id="steps" class="note tip"></div></div>
@@ -191,6 +209,13 @@ function drawScheme(xc, yc, alpha, iu, iv) {
     `<svg viewBox="0 0 480 360" class="geo-board">${g}</svg>`;
 }
 
+document.getElementById('btn-adj').addEventListener('click', () => {
+  els = JSON.parse(JSON.stringify(WORK));
+  els[0].Y = 11.201; els[2].X = 8.04; els[2].Y = 8.041;
+  document.getElementById('gost-note').textContent =
+    'координаты листа и уголка заменены на согласованные с плечами записки (Y₁=11,201; X₃=Y₃≈8,04)';
+  renderTable(); recompute();
+});
 document.getElementById('btn-work').addEventListener('click', () => {
   els = JSON.parse(JSON.stringify(WORK));
   document.getElementById('gost-note').textContent = '';
