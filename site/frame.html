@@ -4,55 +4,79 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Статически неопределимая рама: метод сил</title>
-<meta name="description" content="Живой расчёт: дважды статически неопределимая рама методом сил — основная система, единичные и грузовая эпюры, коэффициенты канонических уравнений, решение x1, x2, итоговые эпюры M, Q, N и деформационная проверка; пересчёт при изменении l, h, m, P, q.">
+<meta name="description" content="Живой расчёт рамы методом сил: произвольные размеры l, h, длина стойки-обрубка γ·h, отношение жёсткостей k, положение момента, силы и участка распределённой нагрузки; коэффициенты канонических уравнений считаются численным перемножением тех же эпюр, что нарисованы (интеграл Мора, формула Симпсона), решение x1, x2, шесть живых эпюр и деформационная проверка.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔩</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
+<style>
+.pgrid { display: flex; gap: 10px 20px; flex-wrap: wrap; align-items: flex-end; font-family: system-ui, sans-serif; font-size: 13.5px; }
+.pgrid .fld { display: flex; flex-direction: column; gap: 3px; color: var(--muted); }
+.pgrid .fld b { color: var(--ink); font-weight: 600; }
+.pgrid input[type=number], .pgrid select { font: 13.5px system-ui, sans-serif; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
+.pgrid input[type=number] { width: 84px; }
+.pgrid input[type=range] { width: 148px; accent-color: var(--accent2); }
+.pgrid .sub { font-size: 12px; }
+.gsep { flex-basis: 100%; height: 0; }
+#totals td { padding: 2px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+#totals td:first-child { color: var(--muted); }
+</style>
 </head>
 <body>
 <main class="wrap">
   <h1>Статически неопределимая рама: метод сил</h1>
-  <p class="lead">Рама с ригелем l = 4 м и стойкой h = 3 м нагружена
-  сосредоточенным моментом m = 80 кН·м (в середине ригеля), горизонтальной
-  силой P = 40 кН (на стойке) и распределённой нагрузкой q = 10 кН/м;
-  жёсткость EI принята за единицу. Система дважды статически неопределима:
-  отбросив шарнирно-неподвижную опору D и заменив её силами \(x_1\) и
-  \(x_2\), записываем канонические уравнения метода сил, считаем
-  коэффициенты перемножением эпюр (интегралы Мора по
-  <a href="t-deflection">Верещагину</a>), решаем систему и строим итоговые
-  эпюры M, Q, N. Числа по умолчанию — эталонная кафедральная выкладка; все
-  входы живые.</p>
+  <p class="lead">Дважды статически неопределимая рама: заделка A внизу стойки
+  высотой h, узел B, ригель BC длиной l, короткая стойка CD длиной \(\gamma h\)
+  к шарнирно-неподвижной опоре D. Нагрузки — сосредоточенный момент m на
+  ригеле, горизонтальная сила P на стойке и распределённая нагрузка q на части
+  ригеля; отношение жёсткостей \(k = EI_{\text{ригеля}}/EI_{\text{стойки}}\).
+  Отбросив опору D и заменив её силами \(x_1\) (вертикальной) и \(x_2\)
+  (горизонтальной), записываем канонические уравнения метода сил. Коэффициенты
+  \(\delta_{ik}\) и \(\Delta_{iP}\) считаются численным интегрированием
+  (формула Симпсона, не менее 200 точек на стержень) по тем же функциям эпюр,
+  которые нарисованы ниже, — поэтому любые параметры отрабатываются
+  автоматически, а эпюры и коэффициенты заведомо согласованы.</p>
 
   <div class="panel">
-    <div class="controls">
-      <label>l, м <input id="in-l" type="number" step="any" value="4" style="width:76px"></label>
-      <label>h, м <input id="in-h" type="number" step="any" value="3" style="width:76px"></label>
-      <label>m, кН·м <input id="in-m" type="number" step="any" value="80" style="width:76px"></label>
-      <label>P, кН <input id="in-P" type="number" step="any" value="40" style="width:76px"></label>
-      <label>q, кН/м <input id="in-q" type="number" step="any" value="10" style="width:76px"></label>
-      <button id="btn-reset" class="badge" style="cursor:pointer">эталонные данные</button>
+    <div class="pgrid">
+      <label class="fld"><span>l — ригель, м</span><input id="in-l" type="number" step="any" value="4"></label>
+      <label class="fld"><span>h — стойка, м</span><input id="in-h" type="number" step="any" value="3"></label>
+      <label class="fld"><span>γ — стойка CD, доля h: <b id="out-g">0,5</b><span class="sub"> (CD = <span id="out-gh">1,5</span> м)</span></span>
+        <input id="in-g" type="range" min="0.05" max="1" step="0.01" value="0.5"></label>
+      <label class="fld"><span>k = EI<sub>ригеля</sub>/EI<sub>стойки</sub></span><input id="in-k" type="number" step="any" min="0.05" value="1"></label>
+      <div class="gsep"></div>
+      <label class="fld"><span>m, кН·м (против час. стрелки)</span><input id="in-m" type="number" step="any" value="80"></label>
+      <label class="fld"><span>α<sub>m</sub> — положение m по ригелю: <b id="out-am">0,5</b></span>
+        <input id="in-am" type="range" min="0" max="1" step="0.01" value="0.5"></label>
+      <label class="fld"><span>P, кН (вправо)</span><input id="in-P" type="number" step="any" value="40"></label>
+      <label class="fld"><span>α<sub>P</sub> — высота P по стойке: <b id="out-aP">0,667</b></span>
+        <input id="in-aP" type="range" min="0" max="1" step="0.001" value="0.667"></label>
+      <div class="gsep"></div>
+      <label class="fld"><span>q, кН/м (вниз)</span><input id="in-q" type="number" step="any" value="10"></label>
+      <label class="fld"><span>β<sub>q</sub> — доля ригеля под q: <b id="out-bq">0,5</b></span>
+        <input id="in-bq" type="range" min="0.02" max="1" step="0.01" value="0.5"></label>
+      <label class="fld"><span>участок q</span><select id="in-side">
+        <option value="C" selected>у опоры (со стороны C)</option>
+        <option value="B">у узла B</option></select></label>
+      <div class="gsep"></div>
+      <label class="fld" style="flex-direction:row;align-items:center;gap:7px">
+        <input id="in-simplify" type="checkbox"><span>воспроизвести упрощения исходной выкладки</span></label>
+      <button id="btn-reset" class="btn">исходные параметры</button>
     </div>
+    <p class="small" id="src-line"></p>
   </div>
 
   <div class="boards">
     <div class="panel" style="flex:1 1 460px">
       <h3 style="margin-top:0">Схема рамы и основная система</h3>
       <div id="scheme"></div>
-      <p class="caption">Заделка A внизу стойки; узел B; ригель BC; короткая
-      стойка CD (полвысоты) к шарнирно-неподвижной опоре D. Опора D
-      отброшена, её действие заменено лишними неизвестными: \(x_1\) —
-      вертикальной и \(x_2\) — горизонтальной силами (красные).</p>
-      <div class="note warn" style="font-size:14px">Честное примечание:
-      в первоисточнике (выкладка Mathcad) сохранились только интегралы Мора
-      и решение, без чертежа. Геометрия и нагрузки восстановлены по
-      структуре подынтегральных выражений: участки эпюр требуют ригеля l,
-      стойки h, стойки-обрубка h/2 к снятой опоре, момента m в середине
-      ригеля, силы P на стойке на высоте 2h/3 от заделки и нагрузки q на
-      половине ригеля у опоры. Единичные эпюры и коэффициенты
-      \(\delta_{11},\ \delta_{12}\) согласуются с выкладкой точно; в
-      \(\delta_{22}\) и грузовых \(\Delta_{iP}\) сохранены эталонные
-      значения выкладки (в ней часть перемножений выполнена с
-      упрощениями — см. примечания ниже), чтобы ответ совпадал с
-      первоисточником: \(x_1 = -13{,}75\), \(x_2 = 32{,}79\).</div>
+      <p class="caption">Основная система: опора D отброшена, её действие
+      заменено лишними неизвестными \(x_1\) (вертикальная, вверх — положительное
+      направление) и \(x_2\) (горизонтальная, вправо — положительное
+      направление). Стойка CD длиной \(\gamma h\) свободна от нагрузки.</p>
+      <p class="small">От исходной задачи кафедры сохранились только интегралы
+      Мора и ответ, без чертежа, поэтому геометрия и расстановка нагрузок
+      восстановлены по структуре подынтегральных выражений. Здесь все
+      восстановленные величины вынесены в параметры, а коэффициенты считаются
+      по эпюрам — схема и числа согласованы при любом наборе входов.</p>
     </div>
     <div class="panel" style="flex:1 1 400px">
       <h3 style="margin-top:0">Итоги</h3>
@@ -71,25 +95,29 @@
   \end{cases}$$</p>
   <p>где \(\delta_{ik}\) — перемещение по направлению i от единичной силы
   \(x_k = 1\), а \(\Delta_{iP}\) — от заданной нагрузки; по теореме о
-  взаимности \(\delta_{12} = \delta_{21}\). Коэффициенты — перемножение
-  эпюр по стержням (единицы: перемещения в долях 1/EI):</p>
-  <p style="text-align:center">$$\delta_{11} = \underbrace{\dfrac{l^{3}}{3}}_{\text{ригель}}
-  + \underbrace{l^{2} h}_{\text{стойка}},\qquad
-  \delta_{22} = \underbrace{\dfrac{h^{3}}{24}}_{\text{стойка CD}}
-  + \underbrace{\dfrac{h^{2} l}{4}}_{\text{ригель}},\qquad
-  \delta_{12} = \delta_{21} = \dfrac{l^{2} h}{4},$$</p>
-  <p style="text-align:center">$$\Delta_{1P} = \dfrac{3}{8}\, m\, l^{2} + m\, l\, h
-  - \dfrac{2}{9}\, P\, h^{2} l - \dfrac{7}{32}\, q\, l^{4},$$</p>
-  <p style="text-align:center">$$\Delta_{2P} = \dfrac{m\, h^{2}}{4}
-  - \dfrac{4}{27}\, P\, h^{3} - \dfrac{7}{24}\, q\, l^{3} - \dfrac{1}{3}.$$</p>
-  <p class="small">Примечания к воспроизведению выкладки: (1) в
-  \(\delta_{22}\) треугольники эпюры \(\bar M_2\) на стойке AB взяты в
-  первоисточнике с противоположными знаками и взаимно уничтожились —
-  строгое самоперемножение добавило бы \(h^{3}/12\); (2) свободный член
-  −1/3 — слагаемое \(-\dfrac{1}{2}\cdot\dfrac{2}{3}\) исходной выкладки,
-  не зависящее от входов; (3) q-слагаемые \(\Delta_{iP}\) взяты по
-  выкладке. Всё это сохранено ради точного соответствия эталонному ответу
-  \(x_1 = -13{,}75\), \(x_2 = 32{,}79\).</p>
+  взаимности \(\delta_{12} = \delta_{21}\). Оба набора коэффициентов — это
+  интегралы Мора, то есть перемножение эпюр по всем стержням:</p>
+  <p style="text-align:center">$$\delta_{ik} = \sum_j \int_0^{s_j}
+  \frac{\bar M_i\, \bar M_k}{EI_j}\, ds, \qquad
+  \Delta_{iP} = \sum_j \int_0^{s_j} \frac{\bar M_i\, M_P}{EI_j}\, ds .$$</p>
+  <p>Интегралы берутся численно, по формуле Симпсона: стержень разбивается
+  точками излома и разрыва эпюр (положения m, P и границы участка q), на
+  каждом стержне не менее 200 точек. Подынтегральные функции — те же самые,
+  что рисуют эпюры, поэтому картинка и коэффициенты не могут разойтись.
+  Жёсткость стойки принята за единицу, ригель имеет жёсткость k. Для контроля
+  те же единичные коэффициенты вычисляются аналитически (перемножение по
+  Верещагину даёт многочлены):</p>
+  <p style="text-align:center">$$\delta_{11} = \frac{l^{3}}{3k} + l^{2}h, \qquad
+  \delta_{12} = \delta_{21} = l h^{2}\left(\gamma - \tfrac12\right)
+  + \frac{\gamma h l^{2}}{2k},$$</p>
+  <p style="text-align:center">$$\delta_{22} =
+  \underbrace{\frac{(\gamma h)^{3} + \big((1-\gamma)h\big)^{3}}{3}}_{\text{стойка }AB}
+  + \underbrace{\frac{(\gamma h)^{2} l}{k}}_{\text{ригель}}
+  + \underbrace{\frac{(\gamma h)^{3}}{3}}_{\text{стойка }CD}.$$</p>
+  <p>При \(\gamma = 1/2\) первое слагаемое \(\delta_{12}\) обращается в ноль:
+  эпюра \(\bar M_2\) на стойке AB антисимметрична (\(\pm\gamma h\) с нулём
+  посередине), а \(\bar M_1\) на ней постоянна. Расхождение численных и
+  аналитических значений выводится в шаге 1 решения.</p>
 
   <h2>Эпюры по стержням</h2>
   <p>Метод сил читается по эпюрам. Единичные эпюры \(\bar M_1\) и
@@ -98,16 +126,17 @@
   коэффициенты выше. После решения системы итоговая эпюра моментов
   собирается наложением:</p>
   <p style="text-align:center">$$M = M_P + x_1\, \bar M_1 + x_2\, \bar M_2,$$</p>
-  <p>а по ней строятся эпюра поперечных сил Q (производная M вдоль
-  стержня) и эпюра продольных сил N (равновесие узлов). Все шесть эпюр
-  живые — пересчитываются при изменении входов; ординаты подписаны в
-  характерных точках.</p>
+  <p>а по ней строятся эпюра поперечных сил \(Q = dM/ds\) вдоль стержня и
+  эпюра продольных сил N (равновесие отсечённой части). Все шесть эпюр
+  живые — перестраиваются при изменении любого параметра; ординаты подписаны
+  в характерных точках.</p>
   <div id="epures" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px"></div>
   <p class="caption">Ординаты отложены перпендикулярно стержням (условная
   сторона; знак — в подписях): единичные \(\bar M_1,\ \bar M_2\) — в
-  метрах, \(M_P\) и M — в кН·м, Q и N — в кН. Узловая сверка: момент в
-  узле B непрерывен, поперечная сила ригеля у узла равна продольной силе
-  стойки и наоборот.</p>
+  метрах, \(M_P\) и M — в кН·м, Q и N — в кН. Местная координата s растёт от
+  заделки к отброшенной опоре: на AB снизу вверх, на BC от B к C, на CD от C
+  к D. Узловая сверка: момент в узле B непрерывен, поперечная сила ригеля у
+  узла равна по модулю продольной силе стойки и наоборот.</p>
 
   <h2>Решение по шагам (с подстановками)</h2>
   <div class="panel"><div id="steps" class="note tip"></div></div>
@@ -119,233 +148,378 @@
 <script src="assets/site.js" data-root="./" data-page="frame"></script>
 <script>
 'use strict';
-const fmt = (v, n = 2) => (+v).toLocaleString('ru-RU', { maximumFractionDigits: n, minimumFractionDigits: 0 });
-const DEF = { l: 4, h: 3, m: 80, P: 40, q: 10 };
-const ids = ['l', 'h', 'm', 'P', 'q'];
-const val = k => +document.getElementById('in-' + k).value || 0;
+const fmt = (v, n = 2) => Number.isFinite(+v)
+  ? (+v === 0 ? 0 : +v).toLocaleString('ru-RU', { maximumFractionDigits: n, minimumFractionDigits: 0 })
+    .replace('-', '−') : '—';
+const sci = v => !Number.isFinite(+v) ? '—'
+  : (Math.abs(v) < 1e-4 && v !== 0 ? (+v).toExponential(2).replace('.', ',').replace('-', '−') : fmt(v, 6));
 
-function recompute() {
-  const l = val('l'), h = val('h'), m = val('m'), P = val('P'), q = val('q');
-  const d11 = l ** 3 / 3 + l * l * h;
-  const d22 = h ** 3 / 24 + h * h * l / 4;
-  const d12 = l * l * h / 4;
-  const D1p = 3 / 8 * m * l * l + m * l * h - 2 / 9 * P * h * h * l - 7 / 32 * q * l ** 4;
-  const D2p = m * h * h / 4 - 4 / 27 * P * h ** 3 - 7 / 24 * q * l ** 3 - 1 / 3;
-  const det = d11 * d22 - d12 * d12;
-  const ok = Math.abs(det) > 1e-9;
-  const x1 = ok ? (-D1p * d22 + D2p * d12) / det : NaN;
-  const x2 = ok ? (-D2p * d11 + D1p * d12) / det : NaN;
-  const r1 = d11 * x1 + d12 * x2 + D1p;
-  const r2 = d12 * x1 + d22 * x2 + D2p;
-  const MA = m - 3 / 8 * q * l * l - 2 / 3 * P * h + x1 * l - x2 * h / 2; // момент в заделке A (итоговая эпюра)
+const DEF = { l: 4, h: 3, g: 0.5, k: 1, m: 80, am: 0.5, P: 40, aP: 2 / 3, q: 10, bq: 0.5, side: 'C', simplify: false };
+const NUMS = ['l', 'h', 'k', 'm', 'P', 'q'];
+const RNGS = ['g', 'am', 'aP', 'bq'];
+let st = Object.assign({}, DEF);
 
-  document.getElementById('totals').innerHTML = `
-    <tr><td>δ₁₁</td><td>${fmt(d11, 3)}</td></tr>
-    <tr><td>δ₂₂</td><td>${fmt(d22, 3)}</td></tr>
-    <tr><td>δ₁₂ = δ₂₁</td><td>${fmt(d12, 3)}</td></tr>
-    <tr><td>Δ₁ₚ</td><td>${fmt(D1p, 3)}</td></tr>
-    <tr><td>Δ₂ₚ</td><td>${fmt(D2p, 3)}</td></tr>
-    <tr><td>Определитель D</td><td>${fmt(det, 3)}</td></tr>
-    <tr><td>Лишняя неизвестная x₁</td><td><b>${ok ? fmt(x1, 2) : '—'}</b> кН</td></tr>
-    <tr><td>Лишняя неизвестная x₂</td><td><b>${ok ? fmt(x2, 2) : '—'}</b> кН</td></tr>
-    <tr><td>Момент в заделке A (итоговая M)</td><td>${ok ? fmt(MA, 2) : '—'} кН·м</td></tr>
-    <tr><td>Деформационная проверка</td><td>${ok ? fmt(r1, 6) + '; ' + fmt(r2, 6) + ' ≈ 0 ✓' : 'система вырождена'}</td></tr>`;
-
-  const st = [];
-  const line = (f, sub, res) => st.push(`<div style="margin:5px 0;font:14px system-ui">${f} = <span style="color:#6b6b74">${sub}</span> = <b>${res}</b></div>`);
-  st.push('<h4 style="margin:8px 0 2px">Шаг 1. Единичные коэффициенты δ — перемножение единичных эпюр</h4>');
-  line('δ₁₁ = (M̄₁×M̄₁): ригель l³/3 + стойка l²·h', `${fmt(l)}³/3 + ${fmt(l)}²·${fmt(h)}`, fmt(d11, 3));
-  line('δ₂₂ = (M̄₂×M̄₂): стойка CD h³/24 + ригель h²·l/4', `${fmt(h)}³/24 + ${fmt(h)}²·${fmt(l)}/4`, fmt(d22, 3));
-  line('δ₁₂ = δ₂₁ = (M̄₁×M̄₂): ригель ½·l·l·(h/2)', `½·${fmt(l)}·${fmt(l)}·${fmt(h / 2)}`, fmt(d12, 3));
-  st.push('<p style="margin:2px 0 6px;font:13px system-ui;color:#6b6b74">На стойке AB перемножение M̄₁×M̄₂ даёт ноль: эпюра M̄₂ там антисимметрична (±h/2 с нулём посередине), а M̄₁ постоянна.</p>');
-  st.push('<h4 style="margin:8px 0 2px">Шаг 2. Грузовые коэффициенты Δ — перемножение единичных эпюр с грузовой</h4>');
-  line('Δ₁ₚ = (M_P×M̄₁) = 3/8·m·l² + m·l·h − 2/9·P·h²·l − 7/32·q·l⁴',
-    `3/8·${fmt(m)}·${fmt(l)}² + ${fmt(m)}·${fmt(l)}·${fmt(h)} − 2/9·${fmt(P)}·${fmt(h)}²·${fmt(l)} − 7/32·${fmt(q)}·${fmt(l)}⁴`,
-    fmt(D1p, 3));
-  line('Δ₂ₚ = (M_P×M̄₂) = m·h²/4 − 4/27·P·h³ − 7/24·q·l³ − 1/3',
-    `${fmt(m)}·${fmt(h)}²/4 − 4/27·${fmt(P)}·${fmt(h)}³ − 7/24·${fmt(q)}·${fmt(l)}³ − 1/3`,
-    fmt(D2p, 3));
-  st.push('<h4 style="margin:8px 0 2px">Шаг 3. Система канонических уравнений</h4>');
-  st.push(`<div style="margin:5px 0;font:14px system-ui">${fmt(d11, 3)}·x₁ + ${fmt(d12, 3)}·x₂ + (${fmt(D1p, 3)}) = 0<br>${fmt(d12, 3)}·x₁ + ${fmt(d22, 3)}·x₂ + (${fmt(D2p, 3)}) = 0</div>`);
-  st.push('<h4 style="margin:8px 0 2px">Шаг 4. Решение (по Крамеру)</h4>');
-  line('D = δ₁₁·δ₂₂ − δ₁₂²', `${fmt(d11, 3)}·${fmt(d22, 3)} − ${fmt(d12, 3)}²`, fmt(det, 3));
-  if (ok) {
-    line('x₁ = (−Δ₁ₚ·δ₂₂ + Δ₂ₚ·δ₁₂)/D',
-      `(−(${fmt(D1p, 3)})·${fmt(d22, 3)} + (${fmt(D2p, 3)})·${fmt(d12, 3)})/${fmt(det, 3)}`,
-      fmt(x1, 2) + ' кН');
-    line('x₂ = (−Δ₂ₚ·δ₁₁ + Δ₁ₚ·δ₁₂)/D',
-      `(−(${fmt(D2p, 3)})·${fmt(d11, 3)} + (${fmt(D1p, 3)})·${fmt(d12, 3)})/${fmt(det, 3)}`,
-      fmt(x2, 2) + ' кН');
-    st.push('<h4 style="margin:8px 0 2px">Шаг 5. Итоговая эпюра и деформационная проверка</h4>');
-    st.push('<p style="margin:2px 0 6px;font:13px system-ui;color:#6b6b74">Итоговая эпюра M = M_P + x₁·M̄₁ + x₂·M̄₂ (см. эпюры выше). Перемножение итоговой M с каждой единичной эпюрой по линейности равно левой части соответствующего канонического уравнения — и должно дать ноль: перемещений по направлениям отброшенных связей нет.</p>');
-    line('(M×M̄₁)/EI = δ₁₁·x₁ + δ₁₂·x₂ + Δ₁ₚ',
-      `${fmt(d11, 3)}·(${fmt(x1, 4)}) + ${fmt(d12, 3)}·(${fmt(x2, 4)}) + (${fmt(D1p, 3)})`, fmt(r1, 6) + ' ≈ 0 ✓');
-    line('(M×M̄₂)/EI = δ₂₁·x₁ + δ₂₂·x₂ + Δ₂ₚ',
-      `${fmt(d12, 3)}·(${fmt(x1, 4)}) + ${fmt(d22, 3)}·(${fmt(x2, 4)}) + (${fmt(D2p, 3)})`, fmt(r2, 6) + ' ≈ 0 ✓');
-  } else {
-    st.push('<div style="margin:5px 0;font:14px system-ui;color:#b3382e">Определитель равен нулю — при таких размерах система вырождена, задайте ненулевые l и h.</div>');
-  }
-  document.getElementById('steps').innerHTML = st.join('');
-  drawScheme(l, h, m, P, q);
-  drawEpures(l, h, m, P, q, x1, x2, ok);
+/* ================= модель: эпюры, интегралы Мора, решение ================= */
+function simpson(f, x0, x1, n) {
+  if (!(x1 > x0)) return 0;
+  const d = (x1 - x0) * 1e-11;
+  const g = x => f(Math.min(Math.max(x, x0 + d), x1 - d));
+  const hh = (x1 - x0) / n;
+  let s = g(x0) + g(x1);
+  for (let i = 1; i < n; i++) s += (i % 2 ? 4 : 2) * g(x0 + i * hh);
+  return s * hh / 3;
+}
+/* узлы разбиения стержня: концы + точки излома и разрыва эпюр */
+function nodesOf(M) {
+  const p = [0, ...M.brk.filter(v => v > 1e-9 && v < M.L - 1e-9).sort((a, b) => a - b), M.L];
+  return p.filter((v, i) => i === 0 || v - p[i - 1] > 1e-9);
+}
+/* численное интегрирование по стержню: Симпсон на каждом участке, ≥ nPer точек */
+function intOver(M, f, nPer = 200) {
+  const p = nodesOf(M), nSeg = p.length - 1;
+  if (nSeg < 1 || !(M.L > 0)) return 0;
+  const n = 2 * Math.ceil(Math.max(nPer / nSeg, 2) / 2);
+  let s = 0;
+  for (let i = 0; i < nSeg; i++) s += simpson(f, p[i], p[i + 1], n);
+  return s;
+}
+function mohr(mems, fa, fb) {
+  return mems.reduce((acc, M) => acc + intOver(M, x => fa(M)(x) * fb(M)(x)) / M.EI, 0);
 }
 
-/* ---------- схема ---------- */
-function drawScheme(l, h, m, P, q) {
-  const L = Math.max(l, 0.5), H = Math.max(h, 0.5);
-  const k = Math.min(380 / L, 190 / H);
-  const x0 = 120, yB = 70;
-  const xC = x0 + L * k, yA = yB + H * k, yD = yB + H / 2 * k, yP = yA - 2 / 3 * H * k;
-  let g = '';
-  // q на половине ригеля у опоры (от середины до C)
-  const xq0 = x0 + L / 2 * k;
-  const nq = Math.max(3, Math.round(L));
-  for (let i = 0; i <= nq; i++) {
-    const x = xq0 + (i / nq) * (xC - xq0);
-    g += `<line x1="${x}" y1="${yB - 32}" x2="${x}" y2="${yB - 10}" stroke="#b3382e" stroke-width="1.3"/>
-      <path d="M ${x} ${yB - 6} l -4 -8 l 8 0 z" fill="#b3382e"/>`;
+function buildModel(s) {
+  const l = +s.l || 0, h = +s.h || 0, g = +s.g, k = +s.k || 1;
+  const m = +s.m || 0, P = +s.P || 0, q = +s.q || 0;
+  const yD = h * (1 - g), Lcd = g * h;
+  const xm = s.am * l, yP = s.aP * h, Lq = s.bq * l;
+  const qa = s.side === 'B' ? 0 : l - Lq, qb = s.side === 'B' ? Lq : l;
+  const qmom = q * (qb * qb - qa * qa) / 2;      // момент нагрузки q относительно оси стойки
+  const qterm = x => x >= qb ? 0 : q * ((qb - x) ** 2 - Math.max(0, qa - x) ** 2) / 2;
+
+  /* эпюры как функции местной координаты (AB: от A вверх; BC: от B к C; CD: от C к D) */
+  const f1 = { AB: () => l, BC: x => l - x, CD: () => 0 };
+  const f2 = { AB: y => y - yD, BC: () => g * h, CD: t => g * h - t };
+  const fp = {
+    AB: y => m - qmom - (y < yP ? P * (yP - y) : 0),
+    BC: x => (x < xm ? m : 0) - qterm(x),
+    CD: () => 0,
+  };
+  const mems = [
+    { id: 'AB', L: h, EI: 1, brk: [yP], f1: f1.AB, f2: f2.AB, fp: fp.AB },
+    { id: 'BC', L: l, EI: k, brk: [xm, qa, qb], f1: f1.BC, f2: f2.BC, fp: fp.BC },
+    { id: 'CD', L: Lcd, EI: 1, brk: [], f1: f1.CD, f2: f2.CD, fp: fp.CD },
+  ];
+  /* коэффициенты — численно, по тем же функциям эпюр */
+  const num = {
+    d11: mohr(mems, M => M.f1, M => M.f1),
+    d12: mohr(mems, M => M.f1, M => M.f2),
+    d22: mohr(mems, M => M.f2, M => M.f2),
+    D1p: mohr(mems, M => M.f1, M => M.fp),
+    D2p: mohr(mems, M => M.f2, M => M.fp),
+  };
+  /* аналитический контроль единичных коэффициентов */
+  const an = {
+    d11: l ** 3 / (3 * k) + l * l * h,
+    d12: l * h * h * (g - 0.5) + g * h * l * l / (2 * k),
+    d22: ((g * h) ** 3 + ((1 - g) * h) ** 3) / 3 + (g * h) ** 2 * l / k + (g * h) ** 3 / 3,
+  };
+  /* упрощения исходной выкладки (её формулы, не зависящие от γ, k и положений нагрузок) */
+  const src = {
+    d11: l ** 3 / 3 + l * l * h,
+    d12: l * l * h / 4,
+    d22: h ** 3 / 24 + h * h * l / 4,
+    D1p: 3 / 8 * m * l * l + m * l * h - 2 / 9 * P * h * h * l - 7 / 32 * q * l ** 4,
+    D2p: m * h * h / 4 - 4 / 27 * P * h ** 3 - 7 / 24 * q * l ** 3 - 1 / 3,
+  };
+  const C = s.simplify ? src : num;
+  const det = C.d11 * C.d22 - C.d12 * C.d12;
+  const ok = isFinite(det) && Math.abs(det) > 1e-9 && l > 0 && h > 0 && k > 0;
+  const x1 = ok ? (-C.D1p * C.d22 + C.D2p * C.d12) / det : NaN;
+  const x2 = ok ? (-C.D2p * C.d11 + C.D1p * C.d12) / det : NaN;
+
+  /* итоговая эпюра и силовые факторы */
+  const ft = {
+    AB: y => fp.AB(y) + x1 * f1.AB(y) + x2 * f2.AB(y),
+    BC: x => fp.BC(x) + x1 * f1.BC(x) + x2 * f2.BC(x),
+    CD: t => x2 * f2.CD(t),
+  };
+  mems.forEach(M => { M.ft = ft[M.id]; });
+  const fq = {                                   // Q = dM/ds
+    AB: y => P * (y < yP ? 1 : 0) + x2,
+    BC: x => (x < qa ? q * (qb - qa) : x < qb ? q * (qb - x) : 0) - x1,
+    CD: () => -x2,
+  };
+  const fn = { AB: () => x1 - q * Lq, BC: () => x2, CD: () => -x1 };
+  /* деформационная проверка: перемножение итоговой эпюры с единичными */
+  const chk1 = ok ? mohr(mems, M => M.ft, M => M.f1) : NaN;
+  const chk2 = ok ? mohr(mems, M => M.ft, M => M.f2) : NaN;
+  const sc1 = ok ? mohr(mems, M => (x => Math.abs(M.ft(x))), M => (x => Math.abs(M.f1(x)))) : NaN;
+  const sc2 = ok ? mohr(mems, M => (x => Math.abs(M.ft(x))), M => (x => Math.abs(M.f2(x)))) : NaN;
+  const MA = ok ? ft.AB(0) : NaN;
+  return { l, h, g, k, m, P, q, yD, Lcd, xm, yP, Lq, qa, qb, qmom, mems,
+    num, an, src, C, det, ok, x1, x2, chk1, chk2, sc1, sc2, MA,
+    f1, f2, fp, ft, fq, fn, simplify: !!s.simplify };
+}
+
+/* ================= управление ================= */
+function syncOuts() {
+  document.getElementById('out-g').textContent = fmt(st.g, 3);
+  document.getElementById('out-gh').textContent = fmt(st.g * st.h, 3);
+  document.getElementById('out-am').textContent = fmt(st.am, 3);
+  document.getElementById('out-aP').textContent = fmt(st.aP, 3);
+  document.getElementById('out-bq').textContent = fmt(st.bq, 3);
+}
+function syncInputs() {
+  NUMS.concat(RNGS).forEach(k => { document.getElementById('in-' + k).value = st[k]; });
+  document.getElementById('in-side').value = st.side;
+  document.getElementById('in-simplify').checked = !!st.simplify;
+  syncOuts();
+}
+const isDefault = () => NUMS.concat(RNGS).every(k => Math.abs(st[k] - DEF[k]) < 1e-9) && st.side === DEF.side;
+
+/* ================= вывод ================= */
+function recompute() {
+  syncOuts();
+  const M = buildModel(st);
+  const ok = M.ok;
+  const e = (v, n = 2) => ok ? fmt(v, n) : '—';
+  const chkOk = ok && Math.abs(M.chk1) < 1e-6 * Math.max(1, M.sc1) && Math.abs(M.chk2) < 1e-6 * Math.max(1, M.sc2);
+
+  document.getElementById('totals').innerHTML = `
+    <tr><td>δ₁₁</td><td>${fmt(M.C.d11, 3)}</td></tr>
+    <tr><td>δ₂₂</td><td>${fmt(M.C.d22, 3)}</td></tr>
+    <tr><td>δ₁₂ = δ₂₁</td><td>${fmt(M.C.d12, 3)}</td></tr>
+    <tr><td>Δ₁ₚ</td><td>${fmt(M.C.D1p, 3)}</td></tr>
+    <tr><td>Δ₂ₚ</td><td>${fmt(M.C.D2p, 3)}</td></tr>
+    <tr><td>Определитель D</td><td>${fmt(M.det, 3)}</td></tr>
+    <tr><td>Лишняя неизвестная x₁</td><td><b>${e(M.x1)}</b> кН (вверх)</td></tr>
+    <tr><td>Лишняя неизвестная x₂</td><td><b>${e(M.x2)}</b> кН (вправо)</td></tr>
+    <tr><td>Момент в заделке A (итоговая M)</td><td>${e(M.MA)} кН·м</td></tr>
+    <tr><td>Деформационная проверка<br><span class="small">∫M·M̄₁/EI; ∫M·M̄₂/EI</span></td>
+      <td>${ok ? sci(M.chk1) + '; ' + sci(M.chk2) + (chkOk ? ' ≈ 0 ✓' : ' — не ноль ⚠') : '—'}</td></tr>`;
+
+  /* компактная строка сверки */
+  const ex = buildModel(Object.assign({}, st, { simplify: false }));
+  document.getElementById('src-line').innerHTML = (isDefault()
+    ? 'Исходная выкладка кафедры при этих параметрах даёт x₁ = −13,75, x₂ = 32,79 (в ней часть перемножений упрощена); '
+    : 'Исходная выкладка кафедры считала единственный вариант (l = 4 м, h = 3 м, γ = 0,5, k = 1, m = 80 посередине ригеля, P = 40 на высоте 2h/3, q = 10 на половине ригеля у опоры) и давала x₁ = −13,75, x₂ = 32,79; ')
+    + `точный расчёт по эпюрам${isDefault() ? '' : ' при текущих параметрах'}: <b>x₁ = ${fmt(ex.x1, 3)}</b>, <b>x₂ = ${fmt(ex.x2, 3)}</b> кН.`
+    + (st.simplify ? ' <b>Тумблер упрощений включён</b> — коэффициенты берутся по формулам выкладки (они не зависят от γ, k, α и β).' : '');
+
+  const out = [];
+  const line = (f, sub, res) => out.push(`<div style="margin:5px 0;font:14px system-ui">${f} = <span style="color:#6b6b74">${sub}</span> = <b>${res}</b></div>`);
+  const note = t => out.push(`<p style="margin:2px 0 6px;font:13px system-ui;color:#6b6b74">${t}</p>`);
+
+  out.push('<h4 style="margin:8px 0 2px">Шаг 1. Единичные коэффициенты δ — перемножение единичных эпюр</h4>');
+  note('Интегралы Мора взяты численно (формула Симпсона) по нарисованным эпюрам; рядом — аналитическое значение того же интеграла и расхождение.');
+  const cmp = (name, nv, av, sub) => {
+    const d = Math.abs(nv - av);
+    out.push(`<div style="margin:5px 0;font:14px system-ui">${name}: численно = <b>${fmt(nv, 6)}</b>, аналитически ${sub} = <b>${fmt(av, 6)}</b>,
+      расхождение = <span style="color:${d < 1e-6 ? '#1a7f37' : '#b3382e'}">${sci(d)}</span>${d < 1e-6 ? ' (&lt; 1·10⁻⁶ ✓)' : ''}</div>`);
+  };
+  cmp('δ₁₁ = (M̄₁×M̄₁)', M.num.d11, M.an.d11,
+    `l³/(3k) + l²h = ${fmt(M.l)}³/(3·${fmt(M.k)}) + ${fmt(M.l)}²·${fmt(M.h)}`);
+  cmp('δ₁₂ = δ₂₁ = (M̄₁×M̄₂)', M.num.d12, M.an.d12,
+    `l·h²(γ−½) + γhl²/(2k) = ${fmt(M.l)}·${fmt(M.h)}²·(${fmt(M.g, 3)}−0,5) + ${fmt(M.g, 3)}·${fmt(M.h)}·${fmt(M.l)}²/(2·${fmt(M.k)})`);
+  cmp('δ₂₂ = (M̄₂×M̄₂)', M.num.d22, M.an.d22, '[(γh)³+((1−γ)h)³]/3 + (γh)²l/k + (γh)³/3');
+
+  out.push('<h4 style="margin:8px 0 2px">Шаг 2. Грузовые коэффициенты Δ — перемножение единичных эпюр с грузовой</h4>');
+  note('Грузовая эпюра кусочно-квадратична (участок q) и разрывна в точке приложения момента m — стержень разбит этими точками, а на участке формула Симпсона точна для многочленов до третьей степени, поэтому численный результат совпадает с точным интегралом.');
+  const per = (fa, fb) => M.mems.map(mm => intOver(mm, x => fa(mm)(x) * fb(mm)(x)) / mm.EI);
+  const p1 = per(mm => mm.f1, mm => mm.fp), p2 = per(mm => mm.f2, mm => mm.fp);
+  line('Δ₁ₚ = Σ∫M̄₁·M_P/EI', `AB: ${fmt(p1[0], 3)} + BC: ${fmt(p1[1], 3)} + CD: ${fmt(p1[2], 3)}`, fmt(M.num.D1p, 3));
+  line('Δ₂ₚ = Σ∫M̄₂·M_P/EI', `AB: ${fmt(p2[0], 3)} + BC: ${fmt(p2[1], 3)} + CD: ${fmt(p2[2], 3)}`, fmt(M.num.D2p, 3));
+  if (M.simplify) {
+    note('Тумблер упрощений включён — дальше в ход идут коэффициенты исходной выкладки:');
+    line('δ₁₁; δ₂₂; δ₁₂ (выкладка)', 'l³/3 + l²h; h³/24 + h²l/4; l²h/4',
+      `${fmt(M.src.d11, 3)}; ${fmt(M.src.d22, 3)}; ${fmt(M.src.d12, 3)}`);
+    line('Δ₁ₚ (выкладка)', `3/8·${fmt(M.m)}·${fmt(M.l)}² + ${fmt(M.m)}·${fmt(M.l)}·${fmt(M.h)} − 2/9·${fmt(M.P)}·${fmt(M.h)}²·${fmt(M.l)} − 7/32·${fmt(M.q)}·${fmt(M.l)}⁴`, fmt(M.src.D1p, 3));
+    line('Δ₂ₚ (выкладка)', `${fmt(M.m)}·${fmt(M.h)}²/4 − 4/27·${fmt(M.P)}·${fmt(M.h)}³ − 7/24·${fmt(M.q)}·${fmt(M.l)}³ − 1/3`, fmt(M.src.D2p, 3));
+    note('Чем они отличаются от точных: в δ₂₂ треугольники эпюры M̄₂ на стойке AB взаимно уничтожены (потеряно слагаемое [(γh)³+((1−γ)h)³]/3), q-слагаемые Δ взяты приближённо, а свободный член −1/3 в Δ₂ₚ вообще не зависит от входных данных. Именно эти упрощения и дают ответ x₁ = −13,75, x₂ = 32,79.');
   }
-  g += `<line x1="${xq0}" y1="${yB - 32}" x2="${xC}" y2="${yB - 32}" stroke="#b3382e" stroke-width="1.3"/>`;
-  g += `<text x="${(xq0 + xC) / 2 - 44}" y="${yB - 40}" style="font:12px system-ui;fill:#b3382e">q = ${fmt(q)} кН/м</text>`;
+
+  out.push('<h4 style="margin:8px 0 2px">Шаг 3. Система канонических уравнений</h4>');
+  out.push(`<div style="margin:5px 0;font:14px system-ui">${fmt(M.C.d11, 3)}·x₁ + ${fmt(M.C.d12, 3)}·x₂ + (${fmt(M.C.D1p, 3)}) = 0<br>${fmt(M.C.d12, 3)}·x₁ + ${fmt(M.C.d22, 3)}·x₂ + (${fmt(M.C.D2p, 3)}) = 0</div>`);
+  out.push('<h4 style="margin:8px 0 2px">Шаг 4. Решение (по Крамеру)</h4>');
+  line('D = δ₁₁·δ₂₂ − δ₁₂²', `${fmt(M.C.d11, 3)}·${fmt(M.C.d22, 3)} − ${fmt(M.C.d12, 3)}²`, fmt(M.det, 3));
+  if (ok) {
+    line('x₁ = (−Δ₁ₚ·δ₂₂ + Δ₂ₚ·δ₁₂)/D',
+      `(−(${fmt(M.C.D1p, 3)})·${fmt(M.C.d22, 3)} + (${fmt(M.C.D2p, 3)})·${fmt(M.C.d12, 3)})/${fmt(M.det, 3)}`, fmt(M.x1, 3) + ' кН');
+    line('x₂ = (−Δ₂ₚ·δ₁₁ + Δ₁ₚ·δ₁₂)/D',
+      `(−(${fmt(M.C.D2p, 3)})·${fmt(M.C.d11, 3)} + (${fmt(M.C.D1p, 3)})·${fmt(M.C.d12, 3)})/${fmt(M.det, 3)}`, fmt(M.x2, 3) + ' кН');
+    out.push('<h4 style="margin:8px 0 2px">Шаг 5. Итоговая эпюра и деформационная проверка</h4>');
+    note('Итоговая эпюра M = M_P + x₁·M̄₁ + x₂·M̄₂ (см. эпюры выше). Её перемножение с каждой единичной эпюрой — это перемещение точки D по направлению снятой связи, оно должно быть нулевым. Интегралы взяты численно по итоговой эпюре, независимо от того, как получены x₁ и x₂.');
+    line('∫M·M̄₁/EI по всем стержням', `масштаб сравнения ∫|M·M̄₁|/EI = ${fmt(M.sc1, 1)}`,
+      sci(M.chk1) + (Math.abs(M.chk1) < 1e-6 * Math.max(1, M.sc1) ? ' ≈ 0 ✓' : ' — не ноль ⚠'));
+    line('∫M·M̄₂/EI по всем стержням', `масштаб сравнения ∫|M·M̄₂|/EI = ${fmt(M.sc2, 1)}`,
+      sci(M.chk2) + (Math.abs(M.chk2) < 1e-6 * Math.max(1, M.sc2) ? ' ≈ 0 ✓' : ' — не ноль ⚠'));
+    if (M.simplify) note('При включённых упрощениях проверка не обнуляется: коэффициенты выкладки не соответствуют её же эпюрам — это и есть цена упрощений.');
+    line('Момент в заделке A: m − M_q − P·y_P + x₁·l − x₂·y_D',
+      `${fmt(M.m)} − ${fmt(M.qmom, 2)} − ${fmt(M.P)}·${fmt(M.yP, 3)} + (${fmt(M.x1, 3)})·${fmt(M.l)} − (${fmt(M.x2, 3)})·${fmt(M.yD, 3)}`,
+      fmt(M.MA, 2) + ' кН·м');
+  } else {
+    out.push('<div style="margin:5px 0;font:14px system-ui;color:#b3382e">Система вырождена или размеры нулевые — задайте ненулевые l, h и k &gt; 0.</div>');
+  }
+  document.getElementById('steps').innerHTML = out.join('');
+
+  drawScheme(M);
+  drawEpures(M);
+}
+
+/* ================= схема ================= */
+function drawScheme(M) {
+  const L = Math.max(M.l, 0.5), H = Math.max(M.h, 0.5);
+  const kk = Math.min(360 / L, 180 / H);
+  const x0 = 130, yB = 78;
+  const xC = x0 + L * kk, yA = yB + H * kk, yD = yB + M.g * H * kk;
+  const yP = yA - M.yP * kk;
+  const px = x => x0 + x * kk;
+  let g = '';
+  // распределённая нагрузка q на участке [qa, qb]
+  if (M.q && M.qb > M.qa) {
+    const xq0 = px(M.qa), xq1 = px(M.qb);
+    const nq = Math.max(3, Math.round((xq1 - xq0) / 26));
+    for (let i = 0; i <= nq; i++) {
+      const x = xq0 + (i / nq) * (xq1 - xq0);
+      g += `<line x1="${x}" y1="${yB - 34}" x2="${x}" y2="${yB - 10}" stroke="#b3382e" stroke-width="1.3"/>
+        <path d="M ${x} ${yB - 6} l -4 -8 l 8 0 z" fill="#b3382e"/>`;
+    }
+    g += `<line x1="${xq0}" y1="${yB - 34}" x2="${xq1}" y2="${yB - 34}" stroke="#b3382e" stroke-width="1.3"/>
+      <text x="${(xq0 + xq1) / 2 - 46}" y="${yB - 42}" style="font:12px system-ui;fill:#b3382e">q = ${fmt(M.q)} кН/м</text>`;
+  }
   // стержни AB, BC, CD
-  g += `<line x1="${x0}" y1="${yA}" x2="${x0}" y2="${yB}" stroke="#16161a" stroke-width="3.4"/>`;
-  g += `<line x1="${x0}" y1="${yB}" x2="${xC}" y2="${yB}" stroke="#16161a" stroke-width="3.4"/>`;
-  g += `<line x1="${xC}" y1="${yB}" x2="${xC}" y2="${yD}" stroke="#16161a" stroke-width="3.4"/>`;
+  g += `<line x1="${x0}" y1="${yA}" x2="${x0}" y2="${yB}" stroke="#16161a" stroke-width="3.4"/>
+    <line x1="${x0}" y1="${yB}" x2="${xC}" y2="${yB}" stroke="#16161a" stroke-width="3.4"/>
+    <line x1="${xC}" y1="${yB}" x2="${xC}" y2="${yD}" stroke="#16161a" stroke-width="3.4"/>`;
   // заделка A
   g += `<line x1="${x0 - 26}" y1="${yA}" x2="${x0 + 26}" y2="${yA}" stroke="#16161a" stroke-width="1.8"/>`;
   for (let i = 0; i < 6; i++) {
     const x = x0 - 24 + i * 9;
     g += `<line x1="${x}" y1="${yA + 10}" x2="${x + 8}" y2="${yA}" stroke="#16161a" stroke-width="1"/>`;
   }
-  // сила P на стойке на высоте 2h/3 от A
-  g += `<line x1="${x0 - 78}" y1="${yP}" x2="${x0 - 10}" y2="${yP}" stroke="#b3382e" stroke-width="2.2"/>
+  // сила P на стойке (вправо)
+  if (M.P) g += `<line x1="${x0 - 80}" y1="${yP}" x2="${x0 - 12}" y2="${yP}" stroke="#b3382e" stroke-width="2.2"/>
     <path d="M ${x0 - 4} ${yP} l -11 -5 l 0 10 z" fill="#b3382e"/>
-    <text x="${x0 - 96}" y="${yP - 8}" style="font:12px system-ui;fill:#b3382e">P = ${fmt(P)} кН</text>`;
-  // момент m в середине ригеля
-  const xm = (x0 + xC) / 2;
-  g += `<path d="M ${xm - 16} ${yB + 20} A 18 18 0 1 1 ${xm + 14} ${yB + 22}" fill="none" stroke="#1a7f37" stroke-width="2"/>
-    <path d="M ${xm + 18} ${yB + 26} l -12 -3 l 7 -9 z" fill="#1a7f37"/>
-    <circle cx="${xm}" cy="${yB}" r="3" fill="#1a7f37"/>
-    <text x="${xm - 72}" y="${yB + 56}" style="font:12px system-ui;fill:#1a7f37">m = ${fmt(m)} кН·м</text>`;
-  // снятая опора D → x1 (вертикаль), x2 (горизонталь)
-  g += `<circle cx="${xC}" cy="${yD}" r="4.4" fill="#fff" stroke="#b3382e" stroke-width="1.8"/>`;
-  g += `<line x1="${xC}" y1="${yD + 58}" x2="${xC}" y2="${yD + 12}" stroke="#b3382e" stroke-width="2.2"/>
+    <text x="${x0 - 100}" y="${yP - 8}" style="font:12px system-ui;fill:#b3382e">P = ${fmt(M.P)} кН</text>`;
+  // момент m на ригеле: дуга снизу, движение слева направо = против часовой стрелки
+  const xm = px(M.xm);
+  if (M.m) {
+    const r = 21, cx = xm, cy = yB;
+    const p1 = [cx + r * Math.cos(Math.PI * 5 / 6), cy + r * Math.sin(Math.PI * 5 / 6)];
+    const p2 = [cx + r * Math.cos(Math.PI / 6), cy + r * Math.sin(Math.PI / 6)];
+    const u = [Math.sin(Math.PI / 6), -Math.cos(Math.PI / 6)];   // касательная в конце дуги
+    const nn = [-u[1], u[0]];
+    const tip = [p2[0] + 10 * u[0], p2[1] + 10 * u[1]];
+    const b1 = [p2[0] - 3 * u[0] + 4.5 * nn[0], p2[1] - 3 * u[1] + 4.5 * nn[1]];
+    const b2 = [p2[0] - 3 * u[0] - 4.5 * nn[0], p2[1] - 3 * u[1] - 4.5 * nn[1]];
+    g += `<path d="M ${p1[0].toFixed(1)} ${p1[1].toFixed(1)} A ${r} ${r} 0 0 0 ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}"
+        fill="none" stroke="#1a7f37" stroke-width="2"/>
+      <path d="M ${tip[0].toFixed(1)} ${tip[1].toFixed(1)} L ${b1[0].toFixed(1)} ${b1[1].toFixed(1)} L ${b2[0].toFixed(1)} ${b2[1].toFixed(1)} z" fill="#1a7f37"/>
+      <circle cx="${xm}" cy="${yB}" r="3" fill="#1a7f37"/>
+      <text x="${xm - 60}" y="${yB + 58}" style="font:12px system-ui;fill:#1a7f37">m = ${fmt(M.m)} кН·м</text>`;
+  }
+  // снятая опора D → x1 (вверх), x2 (вправо)
+  g += `<circle cx="${xC}" cy="${yD}" r="4.4" fill="#fff" stroke="#b3382e" stroke-width="1.8"/>
+    <line x1="${xC}" y1="${yD + 58}" x2="${xC}" y2="${yD + 12}" stroke="#b3382e" stroke-width="2.2"/>
     <path d="M ${xC} ${yD + 8} l -5 11 l 10 0 z" fill="#b3382e"/>
-    <text x="${xC + 8}" y="${yD + 46}" style="font:12px system-ui;fill:#b3382e">x₁</text>`;
-  g += `<line x1="${xC + 62}" y1="${yD}" x2="${xC + 12}" y2="${yD}" stroke="#b3382e" stroke-width="2.2"/>
-    <path d="M ${xC + 8} ${yD} l 11 -5 l 0 10 z" fill="#b3382e"/>
-    <text x="${xC + 34}" y="${yD - 8}" style="font:12px system-ui;fill:#b3382e">x₂</text>`;
+    <text x="${xC + 8}" y="${yD + 46}" style="font:12px system-ui;fill:#b3382e">x₁</text>
+    <line x1="${xC + 12}" y1="${yD}" x2="${xC + 58}" y2="${yD}" stroke="#b3382e" stroke-width="2.2"/>
+    <path d="M ${xC + 66} ${yD} l -11 -5 l 0 10 z" fill="#b3382e"/>
+    <text x="${xC + 30}" y="${yD - 8}" style="font:12px system-ui;fill:#b3382e">x₂</text>`;
   // размеры
   g += `<line x1="${x0}" y1="${yA + 30}" x2="${xC}" y2="${yA + 30}" stroke="#155e75" stroke-width="1"/>
     <path d="M ${x0} ${yA + 30} l 9 -4 l 0 8 z M ${xC} ${yA + 30} l -9 -4 l 0 8 z" fill="#155e75"/>
-    <text x="${(x0 + xC) / 2 - 26}" y="${yA + 46}" style="font:12px system-ui;fill:#155e75">l = ${fmt(l)} м</text>`;
-  g += `<line x1="${xC + 86}" y1="${yB}" x2="${xC + 86}" y2="${yA}" stroke="#155e75" stroke-width="1"/>
-    <path d="M ${xC + 86} ${yB} l -4 9 l 8 0 z M ${xC + 86} ${yA} l -4 -9 l 8 0 z" fill="#155e75"/>
-    <text x="${xC + 92}" y="${(yA + yB) / 2 + 4}" style="font:12px system-ui;fill:#155e75">h</text>
-    <line x1="${xC + 68}" y1="${yB}" x2="${xC + 68}" y2="${yD}" stroke="#155e75" stroke-width="1"/>
-    <path d="M ${xC + 68} ${yB} l -4 9 l 8 0 z M ${xC + 68} ${yD} l -4 -9 l 8 0 z" fill="#155e75"/>
-    <text x="${xC + 34}" y="${(yB + yD) / 2 + 4}" style="font:11px system-ui;fill:#155e75">h/2</text>`;
+    <text x="${(x0 + xC) / 2 - 26}" y="${yA + 46}" style="font:12px system-ui;fill:#155e75">l = ${fmt(M.l)} м</text>
+    <line x1="${xC + 118}" y1="${yB}" x2="${xC + 118}" y2="${yA}" stroke="#155e75" stroke-width="1"/>
+    <path d="M ${xC + 118} ${yB} l -4 9 l 8 0 z M ${xC + 118} ${yA} l -4 -9 l 8 0 z" fill="#155e75"/>
+    <text x="${xC + 124}" y="${(yA + yB) / 2 + 4}" style="font:12px system-ui;fill:#155e75">h = ${fmt(M.h)} м</text>
+    <line x1="${xC + 96}" y1="${yB}" x2="${xC + 96}" y2="${yD}" stroke="#155e75" stroke-width="1"/>
+    <path d="M ${xC + 96} ${yB} l -4 9 l 8 0 z M ${xC + 96} ${yD} l -4 -9 l 8 0 z" fill="#155e75"/>
+    <text x="${xC + 18}" y="${(yB + yD) / 2 - 6}" style="font:11px system-ui;fill:#155e75">γh = ${fmt(M.Lcd, 2)} м</text>`;
   // узлы
   g += `<text x="${x0 - 22}" y="${yA - 8}" style="font:12px system-ui;fill:#6b6b74">A</text>
     <text x="${x0 - 20}" y="${yB - 6}" style="font:12px system-ui;fill:#6b6b74">B</text>
     <text x="${xC + 8}" y="${yB - 8}" style="font:12px system-ui;fill:#6b6b74">C</text>
     <text x="${xC - 24}" y="${yD + 6}" style="font:12px system-ui;fill:#6b6b74">D</text>`;
-  const W = Math.max(640, xC + 130), Ht = yA + 60;
+  const W = Math.max(660, xC + 190), Ht = yA + 62;
   document.getElementById('scheme').innerHTML =
     `<svg viewBox="0 0 ${W} ${Ht}" class="geo-board">${g}</svg>`;
 }
 
-/* ---------- эпюры ----------
- * значения вдоль стержней, параметр t от 0 до 1:
- * AB: t=0 в A, t=1 в B; BC: t=0 в B, t=1 в C; CD: t=0 в C, t=1 в D.
- * Грузовая эпюра — по восстановленной схеме (m в середине ригеля,
- * P на стойке на 2h/3 от A, q на половине ригеля у опоры). */
-function epureData(kind, l, h, m, P, q, x1, x2) {
-  const S = { AB: [], BC: [], CD: [], labels: [] };
-  const lab = (mem, t, v, txt) => S.labels.push({ mem, t, v, txt: txt !== undefined ? txt : fmt(v, 1) });
-  const MP = {
-    AB: y => m - 3 / 8 * q * l * l + (y < 2 * h / 3 ? -P * (2 * h / 3 - y) : 0),
-    BC: x => (x < l / 2 ? m - q * l / 2 * (3 * l / 4 - x) : -q * (l - x) ** 2 / 2),
-    CD: () => 0,
-  };
-  const M1 = { AB: () => l, BC: x => l - x, CD: () => 0 };
-  const M2 = { AB: y => y - h / 2, BC: () => h / 2, CD: y => y - h / 2 };
-  const xBC = t => t * l;
-  const sampleBC = f => {
-    const pts = [];
-    for (let i = 0; i <= 10; i++) { const t = i / 20; pts.push([t, f(xBC(t))]); }
-    pts.push([.5, f(l / 2 - 1e-9)], [.5, f(l / 2 + 1e-9)]);
-    for (let i = 11; i <= 20; i++) { const t = i / 20; pts.push([t, f(xBC(t))]); }
-    return pts;
-  };
-  if (kind === 'M1') {
-    S.AB = [[0, l], [1, l]]; S.BC = [[0, l], [1, 0]]; S.CD = [[0, 0], [1, 0]];
-    lab('AB', .5, l); lab('BC', 0, l);
-  } else if (kind === 'M2') {
-    S.AB = [[0, -h / 2], [1, h / 2]]; S.BC = [[0, h / 2], [1, h / 2]]; S.CD = [[0, h / 2], [1, 0]];
-    lab('AB', 0, -h / 2); lab('AB', 1, h / 2); lab('BC', .5, h / 2); lab('CD', 0, h / 2);
-  } else if (kind === 'MP') {
-    S.AB = [[0, MP.AB(0)], [2 / 3, MP.AB(2 * h / 3 - 1e-9)], [1, MP.AB(h)]];
-    S.BC = sampleBC(MP.BC); S.CD = [[0, 0], [1, 0]];
-    lab('AB', 0, MP.AB(0)); lab('AB', 1, MP.AB(h));
-    lab('BC', .38, MP.BC(l / 2 - 1e-9)); lab('BC', .62, MP.BC(l / 2 + 1e-9));
-  } else if (kind === 'M') {
-    const f = {
-      AB: y => MP.AB(y) + x1 * M1.AB(y) + x2 * M2.AB(y),
-      BC: x => MP.BC(x) + x1 * M1.BC(x) + x2 * M2.BC(x),
-      CD: y => x2 * M2.CD(y),
-    };
-    S.AB = [[0, f.AB(0)], [2 / 3, f.AB(2 * h / 3 - 1e-9)], [1, f.AB(h)]];
-    S.BC = sampleBC(f.BC);
-    S.CD = [[0, f.CD(h)], [1, f.CD(h / 2)]];
-    lab('AB', 0, f.AB(0)); lab('AB', 1, f.AB(h));
-    lab('BC', .38, f.BC(l / 2 - 1e-9)); lab('BC', .62, f.BC(l / 2 + 1e-9));
-    lab('CD', 0, f.CD(h));
-  } else if (kind === 'Q') {
-    const qB = q * l / 2 - x1; // ригель, половина без нагрузки (у B)
-    S.AB = [[0, P + x2], [2 / 3, P + x2], [2 / 3, x2], [1, x2]];
-    S.BC = [[0, qB], [.5, qB], [1, -x1]];
-    S.CD = [[0, x2], [1, x2]];
-    lab('AB', .3, P + x2); lab('AB', .86, x2);
-    lab('BC', .22, qB); lab('BC', 1, -x1); lab('CD', .5, x2);
-  } else if (kind === 'N') {
-    const nAB = x1 - q * l / 2, nBC = x2, nCD = -x1;
-    S.AB = [[0, nAB], [1, nAB]]; S.BC = [[0, nBC], [1, nBC]]; S.CD = [[0, nCD], [1, nCD]];
-    lab('AB', .5, nAB, fmt(nAB, 1) + (nAB < 0 ? ' (сж.)' : ''));
-    lab('BC', .5, nBC, fmt(nBC, 1) + (nBC < 0 ? ' (сж.)' : ' (раст.)'));
-    lab('CD', .5, nCD, fmt(nCD, 1) + (nCD < 0 ? ' (сж.)' : ' (раст.)'));
+/* ================= эпюры ================= */
+/* выборка функции по стержню: концы участков дублируются, чтобы скачки и
+ * изломы (m, P, границы q) рисовались как есть */
+function sampleMember(M, f, nPer = 16) {
+  if (!(M.L > 1e-9)) return [];
+  const p = nodesOf(M), res = [];
+  for (let i = 0; i < p.length - 1; i++) {
+    const a = p[i], b = p[i + 1], d = (b - a) * 1e-9;
+    for (let j = 0; j <= nPer; j++) {
+      const x = a + d + (j / nPer) * (b - a - 2 * d);
+      res.push([x / M.L, f(x)]);
+    }
   }
-  return S;
+  return res;
 }
-
-function drawEpures(l, h, m, P, q, x1, x2, ok) {
+/* подписи ординат: постоянный участок подписывается один раз посередине,
+ * переменный — по концам и в точках локальных экстремумов; скачки видны оба */
+function pickLabels(pts, maxAbs) {
+  if (!pts.length) return [];
+  const tol = 2e-3 * Math.max(maxAbs, 1e-9), res = [];
+  const pieces = [];
+  let cur = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    if (Math.abs(pts[i][0] - pts[i - 1][0]) < 1e-9 && Math.abs(pts[i][1] - pts[i - 1][1]) > tol) {
+      pieces.push(cur); cur = [pts[i]];
+    } else cur.push(pts[i]);
+  }
+  pieces.push(cur);
+  pieces.forEach(pc => {
+    const v = pc.map(p => p[1]);
+    const lo = Math.min.apply(null, v), hi = Math.max.apply(null, v);
+    if (hi - lo <= tol) { res.push(pc[Math.floor(pc.length / 2)]); return; }
+    res.push(pc[0], pc[pc.length - 1]);
+    for (let i = 1; i < pc.length - 1; i++) {
+      const d1 = v[i] - v[i - 1], d2 = v[i + 1] - v[i];
+      if (d1 * d2 < 0 && Math.max(Math.abs(d1), Math.abs(d2)) > tol) res.push(pc[i]);
+    }
+  });
+  const out = [];
+  res.forEach(p => {
+    if (Math.abs(p[1]) < 1e-3 * Math.max(maxAbs, 1e-9)) return;
+    if (out.some(o => Math.abs(o[0] - p[0]) < 0.07 && Math.abs(o[1] - p[1]) < 0.02 * Math.max(maxAbs, 1e-9))) return;
+    out.push(p);
+  });
+  return out.slice(0, 5);
+}
+function drawEpures(M) {
   const box = document.getElementById('epures');
-  if (!ok) { box.innerHTML = '<p class="small">Система вырождена — эпюры не построены.</p>'; return; }
+  if (!M.ok) { box.innerHTML = '<p class="small">Система вырождена — эпюры не построены.</p>'; return; }
   const kinds = [
-    ['M1', 'Единичная M̄₁ (от x₁ = 1)', '#155e75'],
-    ['M2', 'Единичная M̄₂ (от x₂ = 1)', '#155e75'],
-    ['MP', 'Грузовая M_P (от m, P, q)', '#b3382e'],
-    ['M', 'Итоговая M = M_P + x₁M̄₁ + x₂M̄₂', '#1a7f37'],
-    ['Q', 'Поперечные силы Q', '#b3382e'],
-    ['N', 'Продольные силы N', '#155e75'],
+    ['f1', 'Единичная M̄₁ (от x₁ = 1), м', '#155e75'],
+    ['f2', 'Единичная M̄₂ (от x₂ = 1), м', '#155e75'],
+    ['fp', 'Грузовая M_P (от m, P, q), кН·м', '#b3382e'],
+    ['ft', 'Итоговая M = M_P + x₁M̄₁ + x₂M̄₂, кН·м', '#1a7f37'],
+    ['fq', 'Поперечные силы Q, кН', '#b3382e'],
+    ['fn', 'Продольные силы N, кН', '#155e75'],
   ];
-  const L = Math.max(l, 0.5), H = Math.max(h, 0.5);
-  const W = 320, k = Math.min(140 / L, 120 / H);
+  const L = Math.max(M.l, 0.5), H = Math.max(M.h, 0.5);
+  const W = 320, kk = Math.min(140 / L, 118 / H);
   const x0 = 96, yB = 66;
-  const xC = x0 + L * k, yA = yB + H * k, yD = yB + H / 2 * k;
-  const Ht = yA + 44;
+  const xC = x0 + L * kk, yA = yB + H * kk, yD = yB + M.g * H * kk;
+  const Ht = yA + 46;
   const geom = {
     AB: { pt: t => [x0, yA - t * (yA - yB)], perp: [-1, 0] },
     BC: { pt: t => [x0 + t * (xC - x0), yB], perp: [0, -1] },
     CD: { pt: t => [xC, yB + t * (yD - yB)], perp: [1, 0] },
   };
   box.innerHTML = kinds.map(([kind, title, color]) => {
-    const d = epureData(kind, l, h, m, P, q, x1, x2);
+    const data = {};
+    M.mems.forEach(mm => { data[mm.id] = sampleMember(mm, M[kind][mm.id]); });
     let maxAbs = 0;
-    ['AB', 'BC', 'CD'].forEach(mem => d[mem].forEach(p => { maxAbs = Math.max(maxAbs, Math.abs(p[1])); }));
-    const s = maxAbs > 1e-12 ? 42 / maxAbs : 0;
-    let g = '';
-    g += `<line x1="${x0}" y1="${yA}" x2="${x0}" y2="${yB}" stroke="#16161a" stroke-width="2"/>
+    M.mems.forEach(mm => data[mm.id].forEach(p => { maxAbs = Math.max(maxAbs, Math.abs(p[1])); }));
+    const s = maxAbs > 1e-12 ? 40 / maxAbs : 0;
+    let g = `<line x1="${x0}" y1="${yA}" x2="${x0}" y2="${yB}" stroke="#16161a" stroke-width="2"/>
       <line x1="${x0}" y1="${yB}" x2="${xC}" y2="${yB}" stroke="#16161a" stroke-width="2"/>
       <line x1="${xC}" y1="${yB}" x2="${xC}" y2="${yD}" stroke="#16161a" stroke-width="2"/>`;
     for (let i = 0; i < 4; i++) {
@@ -353,9 +527,9 @@ function drawEpures(l, h, m, P, q, x1, x2, ok) {
       g += `<line x1="${x}" y1="${yA + 8}" x2="${x + 7}" y2="${yA}" stroke="#16161a" stroke-width="1"/>`;
     }
     g += `<circle cx="${xC}" cy="${yD}" r="3.4" fill="#fff" stroke="#16161a" stroke-width="1.4"/>`;
-    ['AB', 'BC', 'CD'].forEach(mem => {
-      const { pt, perp } = geom[mem];
-      const pts = d[mem];
+    M.mems.forEach(mm => {
+      const { pt, perp } = geom[mm.id];
+      const pts = data[mm.id];
       if (!pts.length) return;
       const off = pts.map(p => {
         const [x, y] = pt(p[0]);
@@ -365,25 +539,44 @@ function drawEpures(l, h, m, P, q, x1, x2, ok) {
       g += `<polygon points="${ps[0]},${ps[1]} ${off.join(' ')} ${pe[0]},${pe[1]}"
         fill="${color}1f" stroke="${color}" stroke-width="1.5"/>`;
     });
-    d.labels.forEach(({ mem, t, v, txt }) => {
-      const { pt, perp } = geom[mem];
-      const [x, y] = pt(t);
-      let lx = x + perp[0] * v * s, ly = y + perp[1] * v * s;
-      if (perp[0] === 0) { ly += (ly <= y ? -5 : 12); lx -= 12; }
-      else { lx += (perp[0] * v >= 0 ? 4 : -4) * (perp[0] > 0 ? 1 : 1); lx += (lx < x ? -34 : 4); ly += 4; }
-      lx = Math.max(2, Math.min(W - (txt.length > 6 ? 70 : 46), lx)); ly = Math.max(11, Math.min(Ht - 18, ly));
-      g += `<text x="${lx}" y="${ly}" style="font:10.5px system-ui;fill:${color}">${txt}</text>`;
+    const labels = [];
+    M.mems.forEach(mm => {
+      const { pt, perp } = geom[mm.id];
+      pickLabels(data[mm.id], maxAbs).forEach(([t, v]) => {
+        const [x, y] = pt(t);
+        const txt = fmt(v, 1);
+        let lx = x + perp[0] * v * s, ly = y + perp[1] * v * s;
+        if (perp[0] === 0) { ly += (ly <= y ? -5 : 12); lx -= 12; }
+        else { lx += (lx < x ? -30 : 4); ly += 4; }
+        labels.push({ x: Math.max(2, Math.min(W - 6.2 * txt.length, lx)), y: ly, txt, w: 6.2 * txt.length });
+      });
+    });
+    const placed = [];                       // разведение налезающих подписей
+    labels.forEach(L => {
+      const free = dy => !placed.some(p => Math.abs(p.x - L.x) < (p.w + L.w) / 2 && Math.abs(p.y - (L.y + dy)) < 11);
+      const dy = [0, 12, -12, 24, -24, 36, -36].find(free);
+      L.y = Math.max(11, Math.min(Ht - 16, L.y + (dy === undefined ? 0 : dy)));
+      placed.push(L);
+      g += `<text x="${L.x.toFixed(1)}" y="${L.y.toFixed(1)}" style="font:10.5px system-ui;fill:${color}">${L.txt}</text>`;
     });
     g += `<text x="8" y="${Ht - 6}" style="font:11.5px system-ui;fill:#16161a">${title}</text>`;
     return `<svg viewBox="0 0 ${W} ${Ht}" class="geo-board">${g}</svg>`;
   }).join('');
 }
 
-ids.forEach(k => document.getElementById('in-' + k).addEventListener('input', recompute));
+/* ================= события ================= */
+NUMS.forEach(k => document.getElementById('in-' + k).addEventListener('input', ev => {
+  st[k] = +ev.target.value || 0; recompute();
+}));
+RNGS.forEach(k => document.getElementById('in-' + k).addEventListener('input', ev => {
+  st[k] = +ev.target.value; recompute();
+}));
+document.getElementById('in-side').addEventListener('change', ev => { st.side = ev.target.value; recompute(); });
+document.getElementById('in-simplify').addEventListener('change', ev => { st.simplify = ev.target.checked; recompute(); });
 document.getElementById('btn-reset').addEventListener('click', () => {
-  ids.forEach(k => { document.getElementById('in-' + k).value = DEF[k]; });
-  recompute();
+  st = Object.assign({}, DEF); syncInputs(); recompute();
 });
+syncInputs();
 recompute();
 </script>
 </body>

@@ -4,49 +4,61 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Составное сечение: центр тяжести и главные моменты</title>
-<meta name="description" content="Живой расчёт: составное сечение из листа, швеллера и уголка — статические моменты, центр тяжести, перенос осей по Штейнеру, главные оси и моменты, эллипс инерции; профили из сортаментов ГОСТ.">
+<meta name="description" content="Конструктор составного сечения: до 8 элементов — листы, швеллеры ГОСТ 8240, уголки ГОСТ 8509, двутавры ГОСТ 8239 или произвольные профили; статические моменты, центр тяжести, перенос осей по Штейнеру, главные оси и эллипс инерции — живой расчёт по шагам.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔩</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
+<style>
+.el-card{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:8px 0;background:#fbfaf7;font-family:system-ui,sans-serif}
+.el-card .row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:2px}
+.fld input,.fld select{font:13.5px system-ui,sans-serif;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+.fld input[type=number]{width:82px}
+.el-comp{font:12.5px ui-monospace,Consolas,monospace;color:#46464e;margin-top:6px}
+.el-x{border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;color:#9c2b22;font:14px system-ui;padding:3px 9px;align-self:flex-end}
+.el-x:disabled{opacity:.35;cursor:default}
+</style>
 </head>
 <body>
 <main class="wrap">
   <h1>Составное сечение: центр тяжести и главные моменты</h1>
-  <p class="lead">Сечение собрано из трёх профилей: лист, швеллер и
-  равнополочный уголок. Для каждого элемента заданы площадь F, координаты
-  центра тяжести (X, Y) в начальной системе и собственные моменты инерции;
+  <p class="lead">Конструктор составного сечения: соберите фигуру из 1–8
+  элементов — листов b×t, швеллеров (ГОСТ 8240), равнополочных уголков
+  (ГОСТ 8509) и двутавров (ГОСТ 8239) с данными из
+  <a href="https://shadeswd.duckdns.org/ref/sortament">справочника кластера</a> —
+  или задайте характеристики произвольного профиля вручную. Для каждого
+  элемента вводятся координаты его центра тяжести (X, Y) в общей системе;
   дальше всё считается по шагам: статические моменты → центр тяжести →
-  перенос осей → главные оси. По умолчанию — числа исходной работы
-  (швеллер 22А и уголок 11 старого сортамента); кнопкой можно подставить
-  действующие данные ГОСТ из <a href="https://shadeswd.duckdns.org/ref/sortament">справочника</a>.</p>
+  перенос осей по Штейнеру → главные оси, главные моменты и эллипс инерции.</p>
 
   <div class="panel">
     <div class="controls" style="font-size:13.5px">
-      <button id="btn-work" class="badge" style="cursor:pointer">данные работы (по умолчанию)</button>
-      <button id="btn-gost" class="badge" style="cursor:pointer">подставить швеллер/уголок из ГОСТ</button>
-      <button id="btn-adj" class="badge" style="cursor:pointer">координаты, согласованные с плечами работы</button>
-      <span class="small" id="gost-note"></span>
+      <button id="btn-add" class="btn">+ добавить элемент</button>
+      <button id="btn-work" class="btn">пример: сечение учебной работы</button>
+      <button id="btn-plates" class="btn">пример: двутавр из трёх листов</button>
+      <span class="small" id="src-note"></span>
     </div>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font:13.5px system-ui">
-      <thead><tr style="text-align:left">
-        <th>Элемент</th><th>F, см²</th><th>X, см</th><th>Y, см</th>
-        <th>I_x соб., см⁴</th><th>I_y соб., см⁴</th><th>I_xy соб., см⁴</th></tr></thead>
-      <tbody id="els"></tbody>
-    </table></div>
-    <p class="small">Центробежный момент уголка вычислен в работе через
-    \(I_{\min}\):
-    $$I_{xy} = -\dfrac{\sqrt{(2I_{\min} - I_x - I_y)^{2} - (I_x - I_y)^{2}}}{2} =
-    -\dfrac{\sqrt{(2\cdot 72{,}7 - 176 - 176)^{2}}}{2} = -206{,}6\ \text{см}^{4}$$
-    (знак — по ориентации полок).
-    У листа и швеллера оси симметрии → собственный \(I_{xy} = 0\).</p>
+    <div id="cards"></div>
+    <p class="small">Дефолт — сечение из учебной работы; её таблицы содержат
+    внутренние арифметические противоречия (плечи не сходятся с координатами),
+    поэтому расчёт ведётся строго от введённых координат и согласован сам с
+    собой (I<sub>xc</sub>+I<sub>yc</sub> = I<sub>u</sub>+I<sub>v</sub>).</p>
+    <p class="small">Для равнополочного уголка сортамент не приводит
+    \(I_{xy}\) — его вводят вручную, вычислив через \(I_{\min}\):
+    \(|I_{xy}| = \sqrt{(I_x+I_y-2I_{\min})^2-(I_x-I_y)^2}\big/2\)
+    (при \(I_x=I_y\) это просто \(I_x-I_{\min}\)). Знак — по ориентации полок:
+    минус, если полки идут от угла вправо и вверх (или влево и вниз),
+    плюс — при зеркальной ориентации. У листа, швеллера и двутавра есть ось
+    симметрии, поэтому их собственный \(I_{xy}=0\).</p>
   </div>
 
   <div class="boards">
     <div class="panel" style="flex:1 1 480px">
       <h3 style="margin-top:0">Схема сечения</h3>
       <div id="scheme"></div>
-      <p class="caption">Синие точки — центры тяжести элементов, красная —
-      общий центр тяжести; зелёные оси u, v — главные (повёрнуты на α),
-      пунктирный эллипс — эллипс инерции.</p>
+      <p class="caption">Контуры элементов — упрощённые (по габаритам
+      сортамента); синие точки — центры тяжести элементов, красная — общий
+      центр тяжести; зелёные оси u, v — главные (повёрнуты на α), пунктирный
+      эллипс — эллипс инерции. Масштаб подстраивается автоматически.</p>
     </div>
     <div class="panel" style="flex:1 1 440px">
       <h3 style="margin-top:0">Итоги</h3>
@@ -54,77 +66,268 @@
     </div>
   </div>
 
-  <div class="note warn"><b>Примечание о первоисточнике.</b> В таблице исходной
-  работы плечи a<sub>i</sub> листа и уголка не согласуются с приведёнными там же
-  координатами Y<sub>i</sub>: для листа указано a = 1,296, хотя
-  11,1 − 9,905 = 1,195; для уголка a = −1,864, хотя 8,4 − 9,905 = −1,505.
-  Аналогично по X уголка: плечо b = −6,932 отвечает X = 8,04, а не 8,4 из
-  таблицы. При этом сам центр тяжести (14,972; 9,905) в записке посчитан от
-  табличных координат — то есть плечи и координаты записки взаимно
-  противоречивы, и воспроизвести все её итоги одновременно невозможно в
-  принципе. Наш расчёт ведётся строго от введённых координат и согласован
-  сам с собой (инвариант I<sub>xc</sub>+I<sub>yc</sub> = I<sub>u</sub>+I<sub>v</sub>
-  выполняется), поэтому итог отличается от записки (I<sub>xc</sub> 542,7
-  против 574,0; α −3,62° против −6,84°). Кнопка «координаты, согласованные
-  с плечами работы» подставляет Y листа = 11,201, X и Y уголка = 8,04 —
-  это приближает I<sub>xc</sub> к записке (574,1); оставшиеся расхождения —
-  следствие описанных противоречий первоисточника.</div>
-
   <h2>Решение по шагам (с подстановками)</h2>
   <div class="panel"><div id="steps" class="note tip"></div></div>
 </main>
 <script src="assets/site.js" data-root="./" data-page="rgr1"></script>
 <script>
 'use strict';
-const fmt = (v, n = 2) => (+v).toLocaleString('ru-RU', { maximumFractionDigits: n, minimumFractionDigits: 0 });
-/* данные исходной работы (старый сортамент) */
-const WORK = [
-  { name: 'Лист 26×2', F: 52, X: 13, Y: 11.1, Ix: 17.3, Iy: 2929.3, Ixy: 0, w: 26, h: 2 },
-  { name: 'Швеллер 22А (повёрнут, стенка горизонтальна)', F: 28.8, X: 22, Y: 8.54, Ix: 187, Iy: 2330, Ixy: 0, w: 8.7, h: 22 },
-  { name: 'Уголок 11 (110×110)', F: 15.2, X: 8.4, Y: 8.4, Ix: 176, Iy: 176, Ixy: -206.6, w: 11, h: 11 },
-];
-/* действующий сортамент (строки из справочника /ref/, вшитые как фолбэк;
- * при клике «из ГОСТ» пытаемся взять живые данные библиотеки tables.js) */
-const GOST_FALLBACK = {
-  shveller: { name: 'Швеллер 22У (ГОСТ 8240-97)', F: 26.7, Ix: 2110, Iy: 151 },
-  ugolok: { name: 'Уголок 110×8 (ГОСТ 8509-93)', F: 17.2, Ix: 198, Iy: 198 },
-};
-let els = JSON.parse(JSON.stringify(WORK));
+const fmt = (v, n = 2) => (+v === 0 ? 0 : +v)
+  .toLocaleString('ru-RU', { maximumFractionDigits: n, minimumFractionDigits: 0 }).replace('-', '−');
 
-function renderTable() {
-  const tb = document.getElementById('els');
-  tb.innerHTML = els.map((e, i) => `<tr>
-    <td>${e.name}</td>
-    ${['F', 'X', 'Y', 'Ix', 'Iy', 'Ixy'].map(k =>
-      `<td><input type="number" step="any" value="${e[k]}" data-i="${i}" data-k="${k}" style="width:84px"></td>`).join('')}
-  </tr>`).join('');
-  tb.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
-    els[+inp.dataset.i][inp.dataset.k] = +inp.value || 0;
-    recompute();
-  }));
+/* ---- сортаменты: вшитая копия таблиц справочника /ref/ (фолбэк);
+ * при загрузке страницы пытаемся обновить их живой библиотекой REFTAB ---- */
+const EMB = {
+  channel: {
+    "gost": "ГОСТ 8240-97",
+    "columns": ["Номер швеллера", "h, мм", "b, мм", "s, мм", "t, мм", "Площадь A, см²", "Масса 1 м, кг", "Ix, см⁴", "Wx, см³", "ix, см", "Iy, см⁴", "Wy, см³", "z0, см"],
+    "rows": [
+      ["5У", 50, 32, 4.4, 7.0, 6.16, 4.84, 22.8, 9.1, 1.92, 5.61, 2.75, 0.95],
+      ["6,5У", 65, 36, 4.4, 7.2, 7.51, 5.90, 48.6, 15.0, 2.54, 8.70, 3.68, 1.08],
+      ["8У", 80, 40, 4.5, 7.4, 8.98, 7.05, 89.4, 22.4, 3.16, 12.80, 4.75, 1.19],
+      ["10У", 100, 46, 4.5, 7.6, 10.90, 8.59, 174.0, 34.8, 3.99, 20.40, 6.46, 1.37],
+      ["12У", 120, 52, 4.8, 7.8, 13.30, 10.40, 304.0, 50.6, 4.78, 31.20, 8.52, 1.53],
+      ["14У", 140, 58, 4.9, 8.1, 15.60, 12.30, 491.0, 70.2, 5.60, 45.40, 11.00, 1.70],
+      ["16У", 160, 64, 5.0, 8.4, 18.10, 14.20, 747.0, 93.4, 6.42, 63.30, 13.80, 1.87],
+      ["18У", 180, 70, 5.1, 8.7, 20.70, 16.30, 1090.0, 121.0, 7.24, 86.00, 17.00, 2.04],
+      ["20У", 200, 76, 5.2, 9.0, 23.40, 18.40, 1520.0, 152.0, 8.07, 113.00, 20.50, 2.20],
+      ["22У", 220, 82, 5.4, 9.5, 26.70, 21.00, 2110.0, 192.0, 8.89, 151.00, 25.10, 2.37],
+      ["24У", 240, 90, 5.6, 10.0, 30.60, 24.00, 2900.0, 242.0, 9.73, 208.00, 31.60, 2.60],
+      ["27У", 270, 95, 6.0, 10.5, 35.20, 27.70, 4160.0, 308.0, 10.90, 262.00, 37.30, 2.73],
+      ["30У", 300, 100, 6.5, 11.0, 40.50, 31.80, 5810.0, 387.0, 12.00, 327.00, 43.60, 2.84]
+    ]
+  },
+  angle: {
+    "gost": "ГОСТ 8509-93",
+    "columns": ["Номер уголка", "b, мм", "t, мм", "Площадь A, см²", "Масса 1 м, кг", "Ix, см⁴", "Wx, см³", "ix, см"],
+    "rows": [
+      ["2,5", 25, 3, 1.43, 1.12, 0.81, 0.46, 0.75],
+      ["3,2", 32, 3, 1.86, 1.46, 1.77, 0.77, 0.97],
+      ["4", 40, 4, 3.08, 2.42, 4.58, 1.60, 1.22],
+      ["5", 50, 5, 4.80, 3.77, 11.20, 3.13, 1.53],
+      ["6,3", 63, 5, 6.13, 4.81, 23.10, 5.05, 1.94],
+      ["6,3", 63, 6, 7.28, 5.72, 27.06, 5.98, 1.93],
+      ["7", 70, 6, 8.15, 6.39, 37.58, 7.43, 2.15],
+      ["7,5", 75, 6, 8.78, 6.89, 46.57, 8.57, 2.30],
+      ["8", 80, 6, 9.38, 7.36, 56.97, 9.80, 2.47],
+      ["8", 80, 8, 12.30, 9.65, 73.36, 12.80, 2.44],
+      ["9", 90, 7, 12.28, 9.64, 94.30, 14.45, 2.77],
+      ["10", 100, 8, 15.60, 12.25, 147.19, 20.30, 3.07],
+      ["10", 100, 10, 19.24, 15.10, 178.95, 24.97, 3.05],
+      ["11", 110, 8, 17.20, 13.50, 198.17, 24.77, 3.39],
+      ["12,5", 125, 10, 24.33, 19.10, 359.82, 39.74, 3.85],
+      ["14", 140, 10, 27.33, 21.45, 512.29, 50.32, 4.33],
+      ["16", 160, 10, 31.43, 24.67, 774.24, 66.19, 4.96],
+      ["18", 180, 12, 42.19, 33.12, 1316.62, 100.41, 5.59],
+      ["20", 200, 14, 54.60, 42.80, 2097.00, 144.17, 6.20]
+    ]
+  },
+  ibeam: {
+    "gost": "ГОСТ 8239-89",
+    "columns": ["Номер двутавра", "h, мм", "b, мм", "s, мм", "t, мм", "Площадь A, см²", "Масса 1 м, кг", "Ix, см⁴", "Wx, см³", "ix, см", "Sx, см³", "Iy, см⁴", "Wy, см³", "iy, см"],
+    "rows": [
+      ["10", 100, 55, 4.5, 7.2, 12.0, 9.46, 198, 39.7, 4.06, 23.0, 17.9, 6.49, 1.22],
+      ["12", 120, 64, 4.8, 7.3, 14.7, 11.50, 350, 58.4, 4.88, 33.7, 27.9, 8.72, 1.38],
+      ["14", 140, 73, 4.9, 7.5, 17.4, 13.70, 572, 81.7, 5.73, 46.8, 41.9, 11.50, 1.55],
+      ["16", 160, 81, 5.0, 7.8, 20.2, 15.90, 873, 109.0, 6.57, 62.3, 58.6, 14.50, 1.70],
+      ["18", 180, 90, 5.1, 8.1, 23.4, 18.40, 1290, 143.0, 7.42, 81.4, 82.6, 18.40, 1.88],
+      ["20", 200, 100, 5.2, 8.4, 26.8, 21.00, 1840, 184.0, 8.28, 104.0, 115.0, 23.10, 2.07],
+      ["24", 240, 115, 5.6, 9.5, 34.8, 27.30, 3460, 289.0, 9.97, 163.0, 198.0, 34.50, 2.37],
+      ["27", 270, 125, 6.0, 9.8, 40.2, 31.50, 5010, 371.0, 11.20, 210.0, 260.0, 41.50, 2.54],
+      ["30", 300, 135, 6.5, 10.2, 46.5, 36.50, 7080, 472.0, 12.30, 268.0, 337.0, 49.90, 2.69],
+      ["36", 360, 145, 7.5, 12.3, 61.9, 48.60, 13380, 743.0, 14.70, 423.0, 516.0, 71.10, 2.89],
+      ["40", 400, 155, 8.3, 13.0, 72.6, 57.00, 19062, 953.0, 16.20, 545.0, 667.0, 86.10, 3.03],
+      ["45", 450, 160, 9.0, 14.2, 84.7, 66.50, 27696, 1231.0, 18.10, 708.0, 808.0, 101.00, 3.09],
+      ["50", 500, 170, 10.0, 15.2, 100.0, 78.50, 39727, 1589.0, 19.90, 919.0, 1043.0, 123.00, 3.23],
+      ["60", 600, 190, 12.0, 17.8, 138.0, 108.00, 76806, 2560.0, 23.60, 1491.0, 1725.0, 182.00, 3.54]
+    ]
+  }
+};
+const TABLES = { channel: EMB.channel, angle: EMB.angle, ibeam: EMB.ibeam };
+const REF_NAME = { channel: 'gost-8240', angle: 'gost-8509', ibeam: 'gost-8239' };
+const TYPE_META = {
+  plate:   { label: 'лист b×t', word: 'Лист' },
+  channel: { label: 'швеллер (ГОСТ 8240)', word: 'Швеллер' },
+  angle:   { label: 'уголок равнополочный (ГОСТ 8509)', word: 'Уголок' },
+  ibeam:   { label: 'двутавр (ГОСТ 8239)', word: 'Двутавр' },
+  custom:  { label: 'произвольный', word: '' },
+};
+const DEFAULT_PK = { channel: '22У|9.5', angle: '11|8', ibeam: '20|8.4' };
+
+function cmap(tb) {
+  const f = n => tb.columns.findIndex(c => c.startsWith(n));
+  return { h: f('h,'), b: f('b,'), s: f('s,'), t: f('t,'), A: f('Площадь'),
+    Ix: f('Ix,'), Iy: f('Iy,'), z0: f('z0') };
+}
+function pkOf(tb, r) { return r[0] + '|' + r[cmap(tb).t]; }
+function findRow(type, pk) {
+  for (const tb of [TABLES[type], EMB[type]]) {
+    const r = (tb.rows || []).find(r => pkOf(tb, r) === pk);
+    if (r) return { tb, r, m: cmap(tb) };
+  }
+  return null;
+}
+function profLabel(type, tb, r) {
+  const m = cmap(tb);
+  return type === 'angle' ? `${r[0]} — ${r[m.b]}×${r[m.t]} мм`
+    : `${r[0]} — ${r[m.h]}×${r[m.b]} мм`;
 }
 
+/* приведённые характеристики элемента любого типа */
+function derived(e) {
+  if (e.type === 'plate') {
+    const b = +e.b || 0, t = +e.t || 0, horiz = +e.orient !== 90;
+    const w = horiz ? b : t, h = horiz ? t : b;
+    return { name: `Лист ${fmt(b)}×${fmt(t)} (${horiz ? 'горизонтально' : 'вертикально'})`,
+      F: b * t, X: +e.X || 0, Y: +e.Y || 0,
+      Ix: w * h ** 3 / 12, Iy: h * w ** 3 / 12, Ixy: 0, z0: null,
+      draw: { shape: 'rect', pw: w, ph: h, s: 0, t: 0, rot: 0 } };
+  }
+  if (e.type === 'custom') {
+    const F = +e.F || 0, side = Math.sqrt(Math.max(F, 0.01));
+    const d = e.draw || { shape: 'rect', pw: side, ph: side, s: 0, t: 0, rot: 0 };
+    return { name: e.name || 'Произвольный элемент', F, X: +e.X || 0, Y: +e.Y || 0,
+      Ix: +e.Ix || 0, Iy: +e.Iy || 0, Ixy: +e.Ixy || 0, z0: null, draw: d };
+  }
+  const hit = findRow(e.type, e.pk) ||
+    { tb: EMB[e.type], r: EMB[e.type].rows[0], m: cmap(EMB[e.type]) };
+  const { r, m } = hit;
+  const A = +r[m.A], Ix0 = +r[m.Ix], Iy0 = m.Iy >= 0 ? +r[m.Iy] : Ix0;
+  const bcm = r[m.b] / 10, hcm = (m.h >= 0 ? r[m.h] : r[m.b]) / 10;
+  const tcm = r[m.t] / 10, scm = m.s >= 0 ? r[m.s] / 10 : tcm;
+  const rot = +e.orient === 90 ? 90 : 0;
+  const shape = e.type === 'channel' ? 'C' : e.type === 'angle' ? 'L' : 'I';
+  return { name: `${TYPE_META[e.type].word} ${r[0]}${rot ? ' (повёрнут 90°)' : ''}`,
+    F: A, X: +e.X || 0, Y: +e.Y || 0,
+    Ix: rot ? Iy0 : Ix0, Iy: rot ? Ix0 : Iy0,
+    Ixy: e.type === 'angle' ? (+e.Ixy || 0) : 0,
+    z0: m.z0 >= 0 ? r[m.z0] : null,
+    draw: { shape, pw: bcm, ph: hcm, s: scm, t: tcm, rot } };
+}
+
+/* ---- пресеты ---- */
+function presetWork() {
+  return [
+    { type: 'plate', b: 26, t: 2, orient: 0, X: 13, Y: 11.1 },
+    { type: 'custom', name: 'Швеллер 22А (старый сортамент, повёрнут — стенка горизонтальна)',
+      F: 28.8, X: 22, Y: 8.54, Ix: 187, Iy: 2330, Ixy: 0,
+      draw: { shape: 'C', pw: 8.7, ph: 22, s: 0.54, t: 0.95, rot: -90 } },
+    { type: 'custom', name: 'Уголок 11 (110×110×8, старый сортамент)',
+      F: 15.2, X: 8.4, Y: 8.4, Ix: 176, Iy: 176, Ixy: -206.6,
+      draw: { shape: 'L', pw: 11, ph: 11, s: 0.8, t: 0.8, rot: 0 } },
+  ];
+}
+function presetPlates() {
+  return [
+    { type: 'plate', b: 20, t: 1.2, orient: 0, X: 10, Y: 0.6 },
+    { type: 'plate', b: 30, t: 0.8, orient: 90, X: 10, Y: 16.2 },
+    { type: 'plate', b: 20, t: 1.2, orient: 0, X: 10, Y: 31.8 },
+  ];
+}
+let els = presetWork();
+
+/* ---- карточки элементов ---- */
+function changeType(e, t) {
+  e.type = t;
+  if (t === 'plate') { e.b ??= 10; e.t ??= 1; e.orient = +e.orient === 90 ? 90 : 0; }
+  else if (t === 'custom') {
+    e.name = e.name || 'Произвольный элемент';
+    e.F ??= 10; e.Ix ??= 50; e.Iy ??= 50; e.Ixy ??= 0; delete e.draw;
+  } else {
+    if (!findRow(t, e.pk)) e.pk = DEFAULT_PK[t];
+    if (!findRow(t, e.pk)) e.pk = pkOf(TABLES[t], TABLES[t].rows[0]);
+    e.orient = +e.orient === 90 ? 90 : 0;
+    if (t === 'angle') e.Ixy ??= 0;
+  }
+}
+function renderCards() {
+  const wrap = document.getElementById('cards');
+  wrap.innerHTML = els.map((e, i) => {
+    const num = (k, lab, val) => `<label class="fld">${lab}<input type="number" step="any" data-i="${i}" data-k="${k}" value="${val}"></label>`;
+    const orientSel = (o0, o90) => `<label class="fld">ориентация<select data-i="${i}" data-k="orient">
+      <option value="0"${+e.orient !== 90 ? ' selected' : ''}>${o0}</option>
+      <option value="90"${+e.orient === 90 ? ' selected' : ''}>${o90}</option></select></label>`;
+    let flds = '';
+    if (e.type === 'plate') {
+      flds = num('b', 'b, см', e.b) + num('t', 't, см', e.t) + orientSel('горизонтально', 'вертикально');
+    } else if (e.type === 'custom') {
+      flds = `<label class="fld">название<input type="text" data-i="${i}" data-k="name" value="${String(e.name || '').replace(/"/g, '&quot;')}" style="width:230px"></label>`
+        + num('F', 'F, см²', e.F) + num('Ix', 'I_x, см⁴', e.Ix)
+        + num('Iy', 'I_y, см⁴', e.Iy) + num('Ixy', 'I_xy, см⁴', e.Ixy);
+    } else {
+      const tb = TABLES[e.type];
+      const opts = tb.rows.map(r => { const pk = pkOf(tb, r);
+        return `<option value="${pk}"${e.pk === pk ? ' selected' : ''}>${profLabel(e.type, tb, r)}</option>`; }).join('');
+      flds = `<label class="fld">профиль №<select data-i="${i}" data-k="pk">${opts}</select></label>`
+        + orientSel('0°', '90° (I_x↔I_y)');
+      if (e.type === 'angle') flds += num('Ixy', 'I_xy, см⁴ (вручную, см. пояснение)', e.Ixy ?? 0);
+    }
+    return `<div class="el-card"><div class="row">
+      <span style="font:600 13px system-ui;color:var(--muted);align-self:center">№${i + 1}</span>
+      <label class="fld">тип элемента<select data-i="${i}" data-k="type">${
+        Object.keys(TYPE_META).map(t => `<option value="${t}"${e.type === t ? ' selected' : ''}>${TYPE_META[t].label}</option>`).join('')}</select></label>
+      ${flds}${num('X', 'X, см', e.X)}${num('Y', 'Y, см', e.Y)}
+      <button class="el-x" data-del="${i}" title="удалить элемент"${els.length <= 1 ? ' disabled' : ''}>✕</button>
+    </div><div class="el-comp" id="comp-${i}"></div></div>`;
+  }).join('');
+  wrap.querySelectorAll('select').forEach(s => s.addEventListener('change', () => {
+    const e = els[+s.dataset.i], k = s.dataset.k;
+    if (k === 'type') changeType(e, s.value);
+    else if (k === 'orient') e.orient = +s.value;
+    else e[k] = s.value;
+    renderCards(); recompute();
+  }));
+  wrap.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
+    const e = els[+inp.dataset.i], k = inp.dataset.k;
+    e[k] = inp.type === 'number' ? (+inp.value || 0) : inp.value;
+    recompute();
+  }));
+  wrap.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    if (els.length <= 1) return;
+    els.splice(+b.dataset.del, 1); renderCards(); recompute();
+  }));
+  document.getElementById('btn-add').disabled = els.length >= 8;
+}
+
+/* ---- расчёт ---- */
 function recompute() {
-  const F = els.reduce((s, e) => s + e.F, 0);
-  const Sx = els.reduce((s, e) => s + e.F * e.Y, 0);
-  const Sy = els.reduce((s, e) => s + e.F * e.X, 0);
+  const dl = els.map(derived);
+  dl.forEach((d, i) => {
+    const el = document.getElementById('comp-' + i);
+    if (el) el.textContent = `${d.name}: F=${fmt(d.F, 2)} см², I_x=${fmt(d.Ix, 2)}, I_y=${fmt(d.Iy, 2)}, I_xy=${fmt(d.Ixy, 2)} см⁴` +
+      (d.z0 != null ? `, z0=${fmt(d.z0, 2)} см` : '');
+  });
+  const F = dl.reduce((s, d) => s + d.F, 0);
+  if (!(F > 0)) {
+    document.getElementById('totals').innerHTML =
+      '<tr><td class="small">задайте элементы с ненулевой площадью</td></tr>';
+    document.getElementById('steps').innerHTML = '';
+    document.getElementById('scheme').innerHTML = '';
+    return;
+  }
+  const Sx = dl.reduce((s, d) => s + d.F * d.Y, 0);
+  const Sy = dl.reduce((s, d) => s + d.F * d.X, 0);
   const xc = Sy / F, yc = Sx / F;
   let Ixc = 0, Iyc = 0, Ixcyc = 0;
   const rows = [];
-  for (const e of els) {
-    const a = e.Y - yc, b = e.X - xc;
-    Ixc += e.Ix + a * a * e.F;
-    Iyc += e.Iy + b * b * e.F;
-    Ixcyc += e.Ixy + a * b * e.F;
-    rows.push({ e, a, b });
+  for (const d of dl) {
+    const a = d.Y - yc, b = d.X - xc;
+    Ixc += d.Ix + a * a * d.F;
+    Iyc += d.Iy + b * b * d.F;
+    Ixcyc += d.Ixy + a * b * d.F;
+    rows.push({ d, a, b });
   }
   const tg2a = 2 * Ixcyc / (Iyc - Ixc);
-  const alpha = Math.atan(tg2a) / 2;
+  const alpha = isFinite(tg2a) ? Math.atan(tg2a) / 2
+    : (Ixcyc ? Math.sign(Ixcyc) * Math.PI / 4 : 0);
   const half = Math.sqrt((Iyc - Ixc) ** 2 + 4 * Ixcyc ** 2) / 2;
   const Imax = (Ixc + Iyc) / 2 + half, Imin = (Ixc + Iyc) / 2 - half;
-  // ось v (максимума) близка к y при Iyc > Ixc — как в работе: Iv = max
-  const Iv = Imax, Iu = Imin;
-  const iu = Math.sqrt(Iv / F), iv = Math.sqrt(Iu / F);
+  /* ось u — центральная ось x, повёрнутая на α; какой из главных моментов ей
+   * достанется (max или min), зависит от сечения, поэтому берём его поворотом */
+  const c2 = Math.cos(2 * alpha), s2 = Math.sin(2 * alpha);
+  const Iu = (Ixc + Iyc) / 2 + (Ixc - Iyc) / 2 * c2 - Ixcyc * s2;
+  const Iv = Ixc + Iyc - Iu;
+  const iu = Math.sqrt(Math.max(0, Iu) / F), iv = Math.sqrt(Math.max(0, Iv) / F);
 
   document.getElementById('totals').innerHTML = `
     <tr><td>ΣF</td><td><b>${fmt(F)}</b> см²</td></tr>
@@ -133,7 +336,8 @@ function recompute() {
     <tr><td>I_xc / I_yc</td><td>${fmt(Ixc, 2)} / ${fmt(Iyc, 2)} см⁴</td></tr>
     <tr><td>I_xcyc</td><td>${fmt(Ixcyc, 2)} см⁴</td></tr>
     <tr><td>Угол главных осей α</td><td><b>${fmt(alpha * 180 / Math.PI, 2)}°</b></td></tr>
-    <tr><td>Главные моменты I_v / I_u</td><td><b>${fmt(Iv, 1)} / ${fmt(Iu, 1)}</b> см⁴</td></tr>
+    <tr><td>Главные моменты I_u / I_v</td><td><b>${fmt(Iu, 1)} / ${fmt(Iv, 1)}</b> см⁴
+      <span class="small">(наибольший ${fmt(Imax, 1)}, наименьший ${fmt(Imin, 1)})</span></td></tr>
     <tr><td>Проверка: I_xc+I_yc = I_u+I_v</td><td>${fmt(Ixc + Iyc, 1)} = ${fmt(Iu + Iv, 1)} ✓</td></tr>
     <tr><td>Радиусы инерции i_u / i_v</td><td>${fmt(iu, 2)} / ${fmt(iv, 2)} см</td></tr>`;
 
@@ -141,62 +345,91 @@ function recompute() {
   const line = (f, sub, res) => st.push(`<div style="margin:5px 0;font:14px system-ui">${f} = <span style="color:#6b6b74">${sub}</span> = <b>${res}</b></div>`);
   st.push('<h4 style="margin:8px 0 2px">Шаг 1. Статические моменты и центр тяжести</h4>');
   st.push('<p style="margin:2px 0 6px;font:13px system-ui;color:#6b6b74">Каждый элемент даёт S = F·координата своего центра; центр тяжести фигуры — там, где суммарные статические моменты обнуляются.</p>');
-  line('ΣS_x = ΣF_i·Y_i', els.map(e => `${fmt(e.F)}·${fmt(e.Y, 2)}`).join(' + '), fmt(Sx, 3) + ' см³');
-  line('ΣS_y = ΣF_i·X_i', els.map(e => `${fmt(e.F)}·${fmt(e.X, 2)}`).join(' + '), fmt(Sy, 2) + ' см³');
+  line('ΣS_x = ΣF_i·Y_i', dl.map(d => `${fmt(d.F)}·${fmt(d.Y, 2)}`).join(' + '), fmt(Sx, 3) + ' см³');
+  line('ΣS_y = ΣF_i·X_i', dl.map(d => `${fmt(d.F)}·${fmt(d.X, 2)}`).join(' + '), fmt(Sy, 2) + ' см³');
   line('x_c = ΣS_y/ΣF', `${fmt(Sy, 2)}/${fmt(F)}`, fmt(xc, 3) + ' см');
   line('y_c = ΣS_x/ΣF', `${fmt(Sx, 3)}/${fmt(F)}`, fmt(yc, 3) + ' см');
   st.push('<h4 style="margin:8px 0 2px">Шаг 2. Перенос осей (теорема Штейнера) — по элементам</h4>');
   st.push('<p style="margin:2px 0 6px;font:13px system-ui;color:#6b6b74">Плечи каждого элемента: b = X−x_c, a = Y−y_c; переносные члены a²F и b²F всегда положительны, в центробежный входит произведение a·b·F со знаком.</p>');
-  for (const { e, a, b } of rows) {
-    line(`${e.name}: I_x + a²F`, `${fmt(e.Ix, 1)} + (${fmt(a, 3)})²·${fmt(e.F)}`, fmt(e.Ix + a * a * e.F, 2) + ' см⁴');
-    line('&nbsp;&nbsp;&nbsp;I_y + b²F', `${fmt(e.Iy, 1)} + (${fmt(b, 3)})²·${fmt(e.F)}`, fmt(e.Iy + b * b * e.F, 2) + ' см⁴');
-    line('&nbsp;&nbsp;&nbsp;I_xy + a·b·F', `${fmt(e.Ixy, 1)} + (${fmt(a, 3)})·(${fmt(b, 3)})·${fmt(e.F)}`, fmt(e.Ixy + a * b * e.F, 2) + ' см⁴');
+  for (const { d, a, b } of rows) {
+    line(`${d.name}: I_x + a²F`, `${fmt(d.Ix, 1)} + (${fmt(a, 3)})²·${fmt(d.F)}`, fmt(d.Ix + a * a * d.F, 2) + ' см⁴');
+    line('&nbsp;&nbsp;&nbsp;I_y + b²F', `${fmt(d.Iy, 1)} + (${fmt(b, 3)})²·${fmt(d.F)}`, fmt(d.Iy + b * b * d.F, 2) + ' см⁴');
+    line('&nbsp;&nbsp;&nbsp;I_xy + a·b·F', `${fmt(d.Ixy, 1)} + (${fmt(a, 3)})·(${fmt(b, 3)})·${fmt(d.F)}`, fmt(d.Ixy + a * b * d.F, 2) + ' см⁴');
   }
   line('I_xc = Σ(…)', '', fmt(Ixc, 2) + ' см⁴');
   line('I_yc = Σ(…)', '', fmt(Iyc, 2) + ' см⁴');
   line('I_xcyc = Σ(…)', '', fmt(Ixcyc, 2) + ' см⁴');
   st.push('<h4 style="margin:8px 0 2px">Шаг 3. Главные оси и главные моменты</h4>');
   st.push('<p style="margin:2px 0 6px;font:13px system-ui;color:#6b6b74">Поворачиваем центральные оси до обнуления центробежного момента; сумма осевых моментов при повороте не меняется — это и есть проверка.</p>');
-  line('tg 2α = 2I_xcyc/(I_yc − I_xc)', `2·(${fmt(Ixcyc, 2)})/(${fmt(Iyc, 2)} − ${fmt(Ixc, 2)})`, fmt(tg2a, 3));
-  line('α', `arctg(${fmt(tg2a, 3)})/2`, fmt(alpha * 180 / Math.PI, 2) + '°');
-  line('I_v,u = (I_xc+I_yc)/2 ± ½√((I_yc−I_xc)²+4I_xcyc²)',
-    `${fmt((Ixc + Iyc) / 2, 1)} ± ${fmt(half, 1)}`, `${fmt(Iv, 1)} и ${fmt(Iu, 1)} см⁴`);
+  line('tg 2α = 2I_xcyc/(I_yc − I_xc)', `2·(${fmt(Ixcyc, 2)})/(${fmt(Iyc, 2)} − ${fmt(Ixc, 2)})`, isFinite(tg2a) ? fmt(tg2a, 3) : '∞');
+  line('α', isFinite(tg2a) ? `arctg(${fmt(tg2a, 3)})/2` : '±45°', fmt(alpha * 180 / Math.PI, 2) + '°');
+  line('I_max,min = (I_xc+I_yc)/2 ± ½√((I_yc−I_xc)²+4I_xcyc²)',
+    `${fmt((Ixc + Iyc) / 2, 1)} ± ${fmt(half, 1)}`, `${fmt(Imax, 1)} и ${fmt(Imin, 1)} см⁴`);
+  line('I_u (ось x, повёрнутая на α) = (I_xc+I_yc)/2 + ½(I_xc−I_yc)cos2α − I_xcyc·sin2α',
+    `${fmt((Ixc + Iyc) / 2, 1)} + ${fmt((Ixc - Iyc) / 2, 1)}·${fmt(c2, 4)} − (${fmt(Ixcyc, 2)})·${fmt(s2, 4)}`,
+    `${fmt(Iu, 1)} см⁴, значит I_v = ${fmt(Iv, 1)} см⁴`);
   line('проверка: I_xc + I_yc = I_u + I_v', `${fmt(Ixc + Iyc, 1)} = ${fmt(Iu + Iv, 1)}`, '✓');
-  line('i_u = √(I_v/F)', `√(${fmt(Iv, 1)}/${fmt(F)})`, fmt(iu, 2) + ' см');
-  line('i_v = √(I_u/F)', `√(${fmt(Iu, 1)}/${fmt(F)})`, fmt(iv, 2) + ' см');
+  line('i_u = √(I_u/F)', `√(${fmt(Iu, 1)}/${fmt(F)})`, fmt(iu, 2) + ' см');
+  line('i_v = √(I_v/F)', `√(${fmt(Iv, 1)}/${fmt(F)})`, fmt(iv, 2) + ' см');
+  st.push('<p style="margin:2px 0 6px;font:13px system-ui;color:#6b6b74">Эллипс инерции строится на главных радиусах: вдоль оси u откладывается i_v, вдоль оси v — i_u, поэтому эллипс вытянут в ту сторону, куда «растянуто» сечение.</p>');
   document.getElementById('steps').innerHTML = st.join('');
 
-  drawScheme(xc, yc, alpha, iu, iv);
+  drawScheme(dl, xc, yc, alpha, iu, iv);
 }
 
-function drawScheme(xc, yc, alpha, iu, iv) {
-  const k = 11, x0 = 90, y0 = 320; // см → px, ось Y вверх
-  const X = v => x0 + v * k, Y = v => y0 - v * k;
-  let g = '';
-  // элементы прямоугольниками по центрам и габаритам
-  const cols = ['#155e75', '#155e75', '#155e75'];
-  els.forEach((e, i) => {
-    const w = (e.w || Math.sqrt(e.F)) * k, h = (e.h || Math.sqrt(e.F)) * k;
-    g += `<rect x="${X(e.X) - w / 2}" y="${Y(e.Y) - h / 2}" width="${w}" height="${h}"
-      fill="rgba(21,94,117,.10)" stroke="${cols[i]}" stroke-width="1.6"/>`;
-    g += `<circle cx="${X(e.X)}" cy="${Y(e.Y)}" r="3" fill="#155e75"/>`;
+/* ---- схема ---- */
+function shapePts(d) {
+  const { shape, pw: b, ph: h } = d.draw;
+  let s = d.draw.s || b * 0.1, t = d.draw.t || h * 0.1;
+  s = Math.min(s, b * 0.45); t = Math.min(t, h * 0.45);
+  const B = b / 2, H = h / 2;
+  if (shape === 'C') return [[-B, -H], [B, -H], [B, -H + t], [-B + s, -H + t],
+    [-B + s, H - t], [B, H - t], [B, H], [-B, H]];
+  if (shape === 'L') return [[-B, -H], [B, -H], [B, -H + t], [-B + t, -H + t],
+    [-B + t, H], [-B, H]];
+  if (shape === 'I') return [[-B, -H], [B, -H], [B, -H + t], [s / 2, -H + t],
+    [s / 2, H - t], [B, H - t], [B, H], [-B, H], [-B, H - t], [-s / 2, H - t],
+    [-s / 2, -H + t], [-B, -H + t]];
+  return [[-B, -H], [B, -H], [B, H], [-B, H]];
+}
+function drawScheme(dl, xc, yc, alpha, iu, iv) {
+  const W = 480, H = 360;
+  const boxes = dl.map(d => {
+    const sw = Math.abs(d.draw.rot) % 180 === 90;
+    const w = sw ? d.draw.ph : d.draw.pw, h = sw ? d.draw.pw : d.draw.ph;
+    return { x1: d.X - w / 2, x2: d.X + w / 2, y1: d.Y - h / 2, y2: d.Y + h / 2 };
   });
-  // уголок — вырез (условно)
-  // оси начальные
-  g += `<line x1="${X(-1)}" y1="${Y(0)}" x2="${X(30)}" y2="${Y(0)}" stroke="#8a8a92" stroke-width="1"/>`;
-  g += `<line x1="${X(0)}" y1="${Y(-1)}" x2="${X(0)}" y2="${Y(24)}" stroke="#8a8a92" stroke-width="1"/>`;
-  g += `<text x="${X(29)}" y="${Y(0) + 14}" style="font:11px system-ui;fill:#8a8a92">X</text>`;
-  g += `<text x="${X(0) - 14}" y="${Y(23)}" style="font:11px system-ui;fill:#8a8a92">Y</text>`;
+  const R = Math.max(iu, iv);                    // габарит эллипса инерции
+  const minX = Math.min(0, xc - R, ...boxes.map(b => b.x1)) - 1.5;
+  const maxX = Math.max(2, xc + R, ...boxes.map(b => b.x2)) + 1.5;
+  const minY = Math.min(0, yc - R, ...boxes.map(b => b.y1)) - 1.5;
+  const maxY = Math.max(2, yc + R, ...boxes.map(b => b.y2)) + 1.5;
+  const k = Math.min(14, (W - 56) / (maxX - minX), (H - 48) / (maxY - minY));
+  const X = v => 28 + (v - minX) * k, Y = v => H - 24 - (v - minY) * k;
+  let g = '';
+  dl.forEach(d => {
+    const th = (d.draw.rot || 0) * Math.PI / 180, c = Math.cos(th), sn = Math.sin(th);
+    const pts = shapePts(d).map(([px, py]) =>
+      `${(X(d.X + px * c - py * sn)).toFixed(1)},${(Y(d.Y + px * sn + py * c)).toFixed(1)}`).join(' ');
+    g += `<polygon points="${pts}" fill="rgba(21,94,117,.10)" stroke="#155e75" stroke-width="1.6" stroke-linejoin="round"/>`;
+    g += `<circle cx="${X(d.X)}" cy="${Y(d.Y)}" r="3" fill="#155e75"/>`;
+  });
+  // начальные оси X, Y
+  g += `<line x1="${X(minX + 0.3)}" y1="${Y(0)}" x2="${X(maxX - 0.3)}" y2="${Y(0)}" stroke="#8a8a92" stroke-width="1"/>`;
+  g += `<line x1="${X(0)}" y1="${Y(minY + 0.3)}" x2="${X(0)}" y2="${Y(maxY - 0.3)}" stroke="#8a8a92" stroke-width="1"/>`;
+  g += `<text x="${X(maxX - 0.3) - 12}" y="${Y(0) + 14}" style="font:11px system-ui;fill:#8a8a92">X</text>`;
+  g += `<text x="${X(0) - 14}" y="${Y(maxY - 0.3) + 10}" style="font:11px system-ui;fill:#8a8a92">Y</text>`;
   // центр тяжести и центральные оси
   g += `<circle cx="${X(xc)}" cy="${Y(yc)}" r="4" fill="#b3382e"/>`;
-  g += `<line x1="${X(xc - 14)}" y1="${Y(yc)}" x2="${X(xc + 14)}" y2="${Y(yc)}" stroke="#b3382e" stroke-width="1" stroke-dasharray="5 4"/>`;
-  g += `<line x1="${X(xc)}" y1="${Y(yc - 11)}" x2="${X(xc)}" y2="${Y(yc + 11)}" stroke="#b3382e" stroke-width="1" stroke-dasharray="5 4"/>`;
+  const Lx = (maxX - minX) * 0.42, Ly = (maxY - minY) * 0.42;
+  g += `<line x1="${X(xc - Lx)}" y1="${Y(yc)}" x2="${X(xc + Lx)}" y2="${Y(yc)}" stroke="#b3382e" stroke-width="1" stroke-dasharray="5 4"/>`;
+  g += `<line x1="${X(xc)}" y1="${Y(yc - Ly)}" x2="${X(xc)}" y2="${Y(yc + Ly)}" stroke="#b3382e" stroke-width="1" stroke-dasharray="5 4"/>`;
   g += `<text x="${X(xc) + 6}" y="${Y(yc) - 6}" style="font:11px system-ui;fill:#b3382e">C</text>`;
-  // главные оси
-  const c = Math.cos(-alpha), s = Math.sin(-alpha);
-  const ax = (dx, dy) => [X(xc) + (dx * c - dy * s) * k, Y(yc) + (dx * s + dy * c) * k * -1];
-  const [u1x, u1y] = ax(-15, 0), [u2x, u2y] = ax(15, 0);
-  const [v1x, v1y] = ax(0, -12), [v2x, v2y] = ax(0, 12);
+  // главные оси u, v
+  const ca = Math.cos(alpha), sa = Math.sin(alpha);
+  const pt = (du, dv) => [X(xc + du * ca - dv * sa), Y(yc + du * sa + dv * ca)];
+  const [u1x, u1y] = pt(-Lx, 0), [u2x, u2y] = pt(Lx, 0);
+  const [v1x, v1y] = pt(0, -Ly), [v2x, v2y] = pt(0, Ly);
   g += `<line x1="${u1x}" y1="${u1y}" x2="${u2x}" y2="${u2y}" stroke="#1a7f37" stroke-width="1.4"/>`;
   g += `<line x1="${v1x}" y1="${v1y}" x2="${v2x}" y2="${v2y}" stroke="#1a7f37" stroke-width="1.4"/>`;
   g += `<text x="${u2x + 4}" y="${u2y + 4}" style="font:12px system-ui;fill:#1a7f37">u</text>`;
@@ -206,46 +439,43 @@ function drawScheme(xc, yc, alpha, iu, iv) {
     <ellipse cx="${X(xc)}" cy="${Y(yc)}" rx="${iv * k}" ry="${iu * k}"
       fill="none" stroke="#1a7f37" stroke-width="1.1" stroke-dasharray="4 3"/></g>`;
   document.getElementById('scheme').innerHTML =
-    `<svg viewBox="0 0 480 360" class="geo-board">${g}</svg>`;
+    `<svg viewBox="0 0 ${W} ${H}" class="geo-board">${g}</svg>`;
 }
 
-document.getElementById('btn-adj').addEventListener('click', () => {
-  els = JSON.parse(JSON.stringify(WORK));
-  els[0].Y = 11.201; els[2].X = 8.04; els[2].Y = 8.041;
-  document.getElementById('gost-note').textContent =
-    'координаты листа и уголка заменены на согласованные с плечами записки (Y₁=11,201; X₃=Y₃≈8,04)';
-  renderTable(); recompute();
+/* ---- кнопки ---- */
+document.getElementById('btn-add').addEventListener('click', () => {
+  if (els.length >= 8) return;
+  els.push({ type: 'plate', b: 10, t: 1, orient: 0, X: 0, Y: 0 });
+  renderCards(); recompute();
 });
 document.getElementById('btn-work').addEventListener('click', () => {
-  els = JSON.parse(JSON.stringify(WORK));
-  document.getElementById('gost-note').textContent = '';
-  renderTable(); recompute();
+  els = presetWork(); renderCards(); recompute();
 });
-document.getElementById('btn-gost').addEventListener('click', async () => {
-  let sh = GOST_FALLBACK.shveller, ug = GOST_FALLBACK.ugolok, src = 'встроенная копия таблиц';
+document.getElementById('btn-plates').addEventListener('click', () => {
+  els = presetPlates(); renderCards(); recompute();
+});
+
+/* ---- живые сортаменты справочника (фолбэк — вшитая копия выше) ---- */
+(async () => {
+  const note = document.getElementById('src-note');
   try {
     if (!window.REFTAB) await new Promise((ok, err) => {
       const sc = document.createElement('script');
       sc.src = 'https://shadeswd.duckdns.org/ref/lib/tables.js';
       sc.onload = ok; sc.onerror = err; document.head.appendChild(sc);
     });
-    const r1 = await REFTAB.row('gost-8240', '22У');
-    const r2 = await REFTAB.row('gost-8509', '110×8');
-    if (r1) sh = { name: 'Швеллер 22У (ГОСТ 8240-97)', F: r1['A, см²'] ?? r1['Площадь сечения A, см²'] ?? sh.F,
-      Ix: r1['Ix, см⁴'] ?? sh.Ix, Iy: r1['Iy, см⁴'] ?? sh.Iy };
-    if (r2) ug = { name: 'Уголок 110×8 (ГОСТ 8509-93)', F: r2['A, см²'] ?? r2['Площадь сечения A, см²'] ?? ug.F,
-      Ix: r2['Ix, см⁴'] ?? ug.Ix, Iy: r2['Ix, см⁴'] ?? ug.Iy };
-    src = 'живые данные справочника';
-  } catch (e) { /* остаёмся на встроенной копии */ }
-  // швеллер в работе повёрнут: его сильная ось вертикальна → Ix↔Iy
-  els[1] = { ...els[1], name: sh.name + ' (повёрнут)', F: sh.F, Ix: sh.Iy, Iy: sh.Ix };
-  els[2] = { ...els[2], name: ug.name, F: ug.F, Ix: ug.Ix, Iy: ug.Iy,
-    Ixy: -Math.sqrt(Math.max(0, ((2 * 0.413 * ug.Ix - 2 * ug.Ix) ** 2 - 0) )) / 2 || els[2].Ixy };
-  document.getElementById('gost-note').textContent =
-    `подставлено: ${src}; I_xy уголка оставлен по работе (в таблице ГОСТ нет I_min) — уточните при необходимости`;
-  renderTable(); recompute();
-});
-renderTable(); recompute();
+    for (const type of Object.keys(REF_NAME)) {
+      const t = await REFTAB.load(REF_NAME[type]);
+      if (t && t.columns && t.rows && t.rows.length) TABLES[type] = t;
+    }
+    note.textContent = 'сортаменты профилей: живые данные справочника /ref/';
+    renderCards(); recompute();
+  } catch (e) {
+    note.textContent = 'сортаменты профилей: встроенная копия справочника (офлайн)';
+  }
+})();
+
+renderCards(); recompute();
 </script>
 </body>
 </html>
